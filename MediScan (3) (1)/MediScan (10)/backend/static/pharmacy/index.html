@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediScan Pharmacy Hub</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/pharmacy/styles.css">
+</head>
+<body>
+    <div class="glass-bg-glow glow-1"></div>
+    <div class="glass-bg-glow glow-2"></div>
+
+    <!-- Login Box -->
+    <div id="login-container" class="glass-login-box">
+        <div class="login-header">
+            <div class="logo-icon"><i class="fa-solid fa-prescription-bottle-medical"></i></div>
+            <h2>Pharmacy<span>Hub</span></h2>
+            <p>Log in with your Pharmacist / Owner account</p>
+        </div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <div class="input-with-icon">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" id="login-email" required placeholder="owner@pharmacy.com">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="input-with-icon">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+            </div>
+            <div id="login-error" class="error-msg"></div>
+            <button type="submit" class="btn-primary">Authenticate <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+        </form>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="app-container" class="dashboard-layout hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2><i class="fa-solid fa-prescription-bottle-medical"></i> Pharmacy<span>Hub</span></h2>
+                <span class="badge" id="pharmacy-name-badge">My Pharmacy</span>
+            </div>
+            
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" data-section="orders">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Incoming Orders
+                </a>
+                <a href="#" class="nav-item" data-section="inventory">
+                    <i class="fa-solid fa-boxes-stacked"></i> Stock Inventory
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <p id="owner-name">Pharmacy Owner</p>
+                    <small id="pharmacy-address-lbl">Pharmacy Address</small>
+                </div>
+                <button id="logout-btn" class="btn-logout"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <!-- Main Body -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1 id="section-title">Incoming Orders</h1>
+                    <p class="section-desc" id="section-desc-lbl">Process incoming prescriptions and package dispatches.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="notif-bell-container" id="notif-bell-btn">
+                        <div class="bell-btn-inner">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="bell-badge hidden" id="notif-badge">0</span>
+                        </div>
+                        
+                        <div class="notif-dropdown hidden" id="notif-dropdown">
+                            <div class="notif-header">
+                                <h3>Pharmacy Activity</h3>
+                                <button id="clear-notifs-btn">Dismiss All</button>
+                            </div>
+                            <div class="notif-list" id="notif-list-container">
+                                <p class="empty-notifs">No notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Section: Incoming Orders -->
+            <section id="section-orders" class="content-section">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="orders-search" placeholder="Search orders by customer name, phone, or status...">
+                    </div>
+                </div>
+                <div class="orders-grid" id="orders-grid-container">
+                    <p class="empty-orders">Checking for customer orders...</p>
+                </div>
+            </section>
+
+            <!-- Section: Stock Inventory -->
+            <section id="section-inventory" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="inventory-search" placeholder="Search stock medicines by name...">
+                    </div>
+                    <div class="filter-controls">
+                        <button class="btn-primary inline-btn" id="add-stock-btn"><i class="fa-solid fa-plus"></i> Add Stock Item</button>
+                    </div>
+                </div>
+                
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Medicine Name</th>
+                                <th>Batch</th>
+                                <th>Stock Level</th>
+                                <th>Price</th>
+                                <th>Expiry</th>
+                                <th>Presc. Required</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Add Stock Item Modal -->
+    <div id="stock-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-stock-modal">&times;</span>
+            <h2 id="stock-modal-title">Add Stock Item</h2>
+            <form id="stock-form">
+                <input type="hidden" id="stock-id">
+                <div class="form-group">
+                    <label for="stock-med-name">Medicine Name</label>
+                    <input type="text" id="stock-med-name" required placeholder="e.g. Conventin">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="stock-qty">Quantity</label>
+                        <input type="number" id="stock-qty" required value="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-price">Price (EGP)</label>
+                        <input type="number" step="0.01" id="stock-price" required value="50.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="stock-batch">Batch Number</label>
+                        <input type="text" id="stock-batch" value="B001">
+                    </div>
+                    <div class="form-group">
+                        <label for="stock-expiry">Expiry Date</label>
+                        <input type="date" id="stock-expiry" required>
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label for="stock-presc-req">
+                        <input type="checkbox" id="stock-presc-req" checked> Prescription Required
+                    </label>
+                </div>
+                <button type="submit" class="btn-primary">Update Inventory <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/pharmacy/app.js"></script>
+</body>
+</html>

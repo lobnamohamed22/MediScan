@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediScan Delivery Portal</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/delivery/styles.css">
+</head>
+<body>
+    <div class="glass-bg-glow glow-1"></div>
+    <div class="glass-bg-glow glow-2"></div>
+
+    <!-- Login Page -->
+    <div id="login-container" class="glass-login-box">
+        <div class="login-header">
+            <div class="logo-icon"><i class="fa-solid fa-motorcycle"></i></div>
+            <h2>Delivery<span>Portal</span></h2>
+            <p>Access assigned orders and claim pending deliveries</p>
+        </div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <div class="input-with-icon">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" id="login-email" required placeholder="driver@mediscan.com">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="input-with-icon">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+            </div>
+            <div id="login-error" class="error-msg"></div>
+            <button type="submit" class="btn-primary">Authenticate <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+        </form>
+    </div>
+
+    <!-- Main Workspace -->
+    <div id="app-container" class="dashboard-layout hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2><i class="fa-solid fa-motorcycle"></i> Delivery<span>Portal</span></h2>
+                <span class="badge active" id="driver-status-badge">Online</span>
+            </div>
+            
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" data-section="unassigned">
+                    <i class="fa-solid fa-boxes-packing"></i> Claim Orders <span class="badge hidden" id="unassigned-count-badge">0</span>
+                </a>
+                <a href="#" class="nav-item" data-section="assigned">
+                    <i class="fa-solid fa-truck-pickup"></i> My Deliveries
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <p id="driver-name">Delivery Driver</p>
+                    <small>Courier Partner</small>
+                </div>
+                <button id="logout-btn" class="btn-logout"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <!-- Main Body -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1 id="section-title">Claim Orders</h1>
+                    <p class="section-desc" id="section-desc-lbl">Accept ready packages and coordinate drop-off points.</p>
+                </div>
+                <div class="header-actions">
+                    <div class="notif-bell-container" id="notif-bell-btn">
+                        <div class="bell-btn-inner">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="bell-badge hidden" id="notif-badge">0</span>
+                        </div>
+                        
+                        <div class="notif-dropdown hidden" id="notif-dropdown">
+                            <div class="notif-header">
+                                <h3>Delivery Alerts</h3>
+                                <button id="clear-notifs-btn">Dismiss All</button>
+                            </div>
+                            <div class="notif-list" id="notif-list-container">
+                                <p class="empty-notifs">No notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Section: Unassigned / Claim Orders -->
+            <section id="section-unassigned" class="content-section">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="unassigned-search" placeholder="Search unassigned by pharmacy name...">
+                    </div>
+                </div>
+                <div class="orders-grid" id="unassigned-orders-container">
+                    <p class="empty-orders">Checking for ready packages...</p>
+                </div>
+            </section>
+
+            <!-- Section: Assigned / My Deliveries -->
+            <section id="section-assigned" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="assigned-search" placeholder="Search active deliveries by customer or status...">
+                    </div>
+                </div>
+                <div class="orders-grid" id="assigned-orders-container">
+                    <p class="empty-orders">No orders assigned to you. Claim some now!</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Live GPS Coordinates Simulation Modal -->
+    <div id="gps-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-gps-modal">&times;</span>
+            <h2>GPS Tracking Simulator</h2>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:1.5rem;">
+                Simulate your delivery route. Updating coords will move your delivery vehicle on the patient's map in real time!
+            </p>
+            
+            <div class="gps-route-info">
+                <div class="route-point">
+                    <strong><i class="fa-solid fa-house-medical" style="color:var(--accent-color);"></i> Pharmacy Location:</strong>
+                    <span id="gps-pharm-lbl">30.0544, 31.2457</span>
+                </div>
+                <div class="route-point">
+                    <strong><i class="fa-solid fa-house-user" style="color:var(--blue-accent);"></i> Patient Location:</strong>
+                    <span id="gps-cust-lbl">30.0444, 31.2357</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Route Progress Simulation</label>
+                <div class="slider-container">
+                    <input type="range" id="gps-slider" min="0" max="100" value="0">
+                    <div class="slider-labels">
+                        <span>At Pharmacy</span>
+                        <span>Midpoint</span>
+                        <span>At Customer</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Simulated Lat</label>
+                    <input type="text" id="sim-lat" readonly class="readonly-input">
+                </div>
+                <div class="form-group">
+                    <label>Simulated Lng</label>
+                    <input type="text" id="sim-lng" readonly class="readonly-input">
+                </div>
+            </div>
+
+            <input type="hidden" id="gps-order-id">
+            <button id="send-gps-btn" class="btn-primary">Update GPS Coordinates 📍</button>
+            <div id="gps-status-msg" style="margin-top:0.75rem; text-align:center; font-size:0.85rem; color:var(--green-accent);"></div>
+        </div>
+    </div>
+
+    <script src="/delivery/app.js"></script>
+</body>
+</html>

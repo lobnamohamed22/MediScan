@@ -1,0 +1,306 @@
+{
+    "clientName": "Thunder Client",
+    "collectionName": "MediScan APIs Collection",
+    "collectionId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+    "dateExported": "2026-05-12T00:00:00.000Z",
+    "version": "1.2",
+    "folders": [
+        {
+            "_id": "90a12c9d-181e-4a0c-9d6e-d55584b02162",
+            "name": "Auth",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 10000
+        },
+        {
+            "_id": "6a22aadc-dd6a-4efb-9422-b01c59e59a54",
+            "name": "Users",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 20000
+        },
+        {
+            "_id": "35a9e936-2f7b-4572-9c45-26c1ff4896e2",
+            "name": "Prescriptions",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 30000
+        },
+        {
+            "_id": "b22a8d33-f812-4713-a6c5-e00c82c552d6",
+            "name": "Pharmacies",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 40000
+        },
+        {
+            "_id": "404b84c4-c99c-4ded-8fe5-41267d22a6a8",
+            "name": "Medicines",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 50000
+        },
+        {
+            "_id": "8d6d024a-1a90-431f-a3a2-c43f6e215378",
+            "name": "Orders",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 60000
+        },
+        {
+            "_id": "209daba2-e17e-48d6-85d3-630b79fb0c33",
+            "name": "Chatbot",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 70000
+        },
+        {
+            "_id": "b8df0cad-81d3-4d61-ab05-cacae2c67f76",
+            "name": "General",
+            "containerId": "",
+            "created": "2026-05-12T00:00:00.000Z",
+            "sortNum": 80000
+        }
+    ],
+    "requests": [
+        {
+            "_id": "1e7240cb-3f55-41fd-b1aa-adcca606e234",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "b8df0cad-81d3-4d61-ab05-cacae2c67f76",
+            "name": "Home",
+            "url": "http://127.0.0.1:5000/",
+            "method": "GET",
+            "sortNum": 10000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": []
+        },
+        {
+            "_id": "49156ac8-6d5a-4ef6-925f-5241e12c2719",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "b8df0cad-81d3-4d61-ab05-cacae2c67f76",
+            "name": "Ping",
+            "url": "http://127.0.0.1:5000/ping",
+            "method": "GET",
+            "sortNum": 20000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": []
+        },
+        {
+            "_id": "a81de8c2-875c-4c15-929d-46ccc77994f4",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "90a12c9d-181e-4a0c-9d6e-d55584b02162",
+            "name": "Login",
+            "url": "http://127.0.0.1:5000/api/auth/login",
+            "method": "POST",
+            "sortNum": 30000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password\"\n}",
+                "form": []
+            }
+        },
+        {
+            "_id": "446dac7f-b80f-45ad-a8bc-d2ab17e6c9a2",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "90a12c9d-181e-4a0c-9d6e-d55584b02162",
+            "name": "Register",
+            "url": "http://127.0.0.1:5000/api/auth/register",
+            "method": "POST",
+            "sortNum": 40000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password\",\n  \"phone\": \"01000000000\",\n  \"role\": \"patient\"\n}",
+                "form": []
+            }
+        },
+        {
+            "_id": "82737fec-aa84-4419-8c93-d2af334868e7",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "6a22aadc-dd6a-4efb-9422-b01c59e59a54",
+            "name": "Get Profile",
+            "url": "http://127.0.0.1:5000/api/users/profile",
+            "method": "GET",
+            "sortNum": 50000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "5c33a488-ac65-4065-a49e-78cc1067234c",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "6a22aadc-dd6a-4efb-9422-b01c59e59a54",
+            "name": "Update Profile",
+            "url": "http://127.0.0.1:5000/api/users/profile",
+            "method": "PATCH",
+            "sortNum": 60000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"name\": \"New Name\"\n}",
+                "form": []
+            }
+        },
+        {
+            "_id": "4f3b0d38-a8af-489d-b755-c48653ea5438",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "35a9e936-2f7b-4572-9c45-26c1ff4896e2",
+            "name": "Get Prescriptions",
+            "url": "http://127.0.0.1:5000/api/prescriptions/",
+            "method": "GET",
+            "sortNum": 70000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "51341861-27a7-470c-92c1-4caba24c3d91",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "35a9e936-2f7b-4572-9c45-26c1ff4896e2",
+            "name": "Upload Prescription",
+            "url": "http://127.0.0.1:5000/api/prescriptions/upload",
+            "method": "POST",
+            "sortNum": 80000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "b5f6db22-77a7-422a-9c4a-f6c81f83a459",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "b22a8d33-f812-4713-a6c5-e00c82c552d6",
+            "name": "List Pharmacies",
+            "url": "http://127.0.0.1:5000/api/pharmacies/",
+            "method": "GET",
+            "sortNum": 90000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "6caf848e-8578-49af-8663-8d888d999442",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "404b84c4-c99c-4ded-8fe5-41267d22a6a8",
+            "name": "Search Medicines",
+            "url": "http://127.0.0.1:5000/api/medicines/search",
+            "method": "GET",
+            "sortNum": 100000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "da31a8fb-208b-4c13-969b-18e696c15577",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "8d6d024a-1a90-431f-a3a2-c43f6e215378",
+            "name": "Create Order",
+            "url": "http://127.0.0.1:5000/api/orders/",
+            "method": "POST",
+            "sortNum": 110000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "3456af75-bb68-409a-ba99-f439169699b9",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "8d6d024a-1a90-431f-a3a2-c43f6e215378",
+            "name": "Get User Orders",
+            "url": "http://127.0.0.1:5000/api/orders/user",
+            "method": "GET",
+            "sortNum": 120000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ]
+        },
+        {
+            "_id": "8b6cc92b-40ab-408c-9a6c-47de36bdac0c",
+            "colId": "8ff52e57-ff9a-4c7e-a9d2-6447cf36b189",
+            "containerId": "209daba2-e17e-48d6-85d3-630b79fb0c33",
+            "name": "Chatbot Chat",
+            "url": "http://127.0.0.1:5000/api/chatbot/chat",
+            "method": "POST",
+            "sortNum": 130000,
+            "created": "2026-05-12T00:00:00.000Z",
+            "modified": "2026-05-12T00:00:00.000Z",
+            "headers": [
+                {
+                    "name": "Content-Type",
+                    "value": "application/json"
+                },
+                {
+                    "name": "Authorization",
+                    "value": "Bearer YOUR_JWT_TOKEN_HERE"
+                }
+            ],
+            "body": {
+                "type": "json",
+                "raw": "{\n  \"message\": \"Hello, I have a headache\"\n}",
+                "form": []
+            }
+        }
+    ]
+}

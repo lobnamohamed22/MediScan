@@ -1,0 +1,72 @@
+# Python Virtual Environments & Cache
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.mypy_cache/
+.pytest_cache/
+
+# Local Environment Configurations
+.env
+.flaskenv
+
+# SQLite & Local Databases
+*.db
+*.sqlite
+backend/instance/
+instance/
+
+# Flask & Backend Uploads
+uploads/
+backend/uploads/
+static/uploads/
+
+# Flutter / Dart Build & Generated Files
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+mobile/build/
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/ios/Flutter/Generated.xcconfig
+mobile/android/local.properties
+mobile/android/key.properties
+*.flutter-plugins-dependencies
+*.flutter-plugins
+*.packages
+
+# IDEs and Editors
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+.vscode/launch.json
+.vscode/tasks.json
+# Keep settings.json so user's python settings.json configuration is shared
+!.vscode/settings.json
+
+# Operating System Files
+DS_Store
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

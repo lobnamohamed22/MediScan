@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediScan Admin - Central Control Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="/admin/styles.css">
+</head>
+<body>
+    <!-- Background glows -->
+    <div class="glass-bg-glow glow-1"></div>
+    <div class="glass-bg-glow glow-2"></div>
+
+    <!-- Login Container -->
+    <div id="login-container" class="glass-login-box">
+        <div class="login-header">
+            <div class="logo-icon"><i class="fa-solid fa-laptop-medical"></i></div>
+            <h2>Medi<span>Scan</span> Admin</h2>
+            <p>Enter your credentials to access central console</p>
+        </div>
+        <form id="login-form">
+            <div class="form-group">
+                <label for="login-email">Email Address</label>
+                <div class="input-with-icon">
+                    <i class="fa-regular fa-envelope"></i>
+                    <input type="email" id="login-email" required placeholder="admin@mediscan.com">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="login-password">Password</label>
+                <div class="input-with-icon">
+                    <i class="fa-solid fa-lock"></i>
+                    <input type="password" id="login-password" required placeholder="••••••••">
+                </div>
+            </div>
+            <div id="login-error" class="error-msg"></div>
+            <button type="submit" class="btn-primary">Authenticate <i class="fa-solid fa-arrow-right-to-bracket"></i></button>
+        </form>
+    </div>
+
+    <!-- App Container -->
+    <div id="app-container" class="dashboard-layout hidden">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h2><i class="fa-solid fa-laptop-medical"></i> Medi<span>Scan</span></h2>
+                <span class="badge">ADMIN</span>
+            </div>
+            
+            <nav class="nav-links">
+                <a href="#" class="nav-item active" data-section="analytics">
+                    <i class="fa-solid fa-chart-line"></i> Analytics
+                </a>
+                <a href="#" class="nav-item" data-section="users">
+                    <i class="fa-solid fa-user-gear"></i> Users
+                </a>
+                <a href="#" class="nav-item" data-section="pharmacies">
+                    <i class="fa-solid fa-house-medical"></i> Pharmacies
+                </a>
+                <a href="#" class="nav-item" data-section="medicines">
+                    <i class="fa-solid fa-prescription-bottle-medical"></i> Medicine Catalog
+                </a>
+                <a href="#" class="nav-item" data-section="inventory">
+                    <i class="fa-solid fa-boxes-stacked"></i> Stock Inventory
+                </a>
+                <a href="#" class="nav-item" data-section="prescriptions">
+                    <i class="fa-solid fa-file-medical"></i> Prescriptions
+                </a>
+                <a href="#" class="nav-item" data-section="orders">
+                    <i class="fa-solid fa-truck-ramp-box"></i> Customer Orders
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <p id="admin-name">Admin User</p>
+                    <small>System Administrator</small>
+                </div>
+                <button id="logout-btn" class="btn-logout"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header">
+                <div>
+                    <h1 id="section-title">System Analytics</h1>
+                    <p class="section-desc" id="section-desc-lbl">Real-time status overview of the MediScan platform.</p>
+                </div>
+                
+                <div class="header-actions">
+                    <!-- Notification Bell -->
+                    <div class="notif-bell-container" id="notif-bell-btn">
+                        <div class="bell-btn-inner">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="bell-badge hidden" id="notif-badge">0</span>
+                        </div>
+                        
+                        <!-- Dropdown -->
+                        <div class="notif-dropdown hidden" id="notif-dropdown">
+                            <div class="notif-header">
+                                <h3>Live System Activity</h3>
+                                <button id="clear-notifs-btn">Dismiss All</button>
+                            </div>
+                            <div class="notif-list" id="notif-list-container">
+                                <p class="empty-notifs">No recent notifications</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Sections -->
+            
+            <!-- Section: Analytics -->
+            <section id="section-analytics" class="content-section">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-card-inner">
+                            <div>
+                                <div class="metric-title">Total Revenue</div>
+                                <div class="metric-value" id="metric-revenue">0.00 EGP</div>
+                            </div>
+                            <div class="metric-icon revenue"><i class="fa-solid fa-sack-dollar"></i></div>
+                        </div>
+                        <div class="metric-trend positive"><i class="fa-solid fa-circle-check"></i> Live Database Connected</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-card-inner">
+                            <div>
+                                <div class="metric-title">Active Orders</div>
+                                <div class="metric-value" id="metric-orders">0</div>
+                            </div>
+                            <div class="metric-icon orders"><i class="fa-solid fa-cart-shopping"></i></div>
+                        </div>
+                        <div class="metric-trend"><i class="fa-solid fa-arrow-trend-up"></i> Total packages processed</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-card-inner">
+                            <div>
+                                <div class="metric-title">Registered Users</div>
+                                <div class="metric-value" id="metric-users">0</div>
+                            </div>
+                            <div class="metric-icon users"><i class="fa-solid fa-users"></i></div>
+                        </div>
+                        <div class="metric-trend positive"><i class="fa-solid fa-user-shield"></i> Patients & Staff</div>
+                    </div>
+                    
+                    <div class="metric-card">
+                        <div class="metric-card-inner">
+                            <div>
+                                <div class="metric-title">Pharmacies</div>
+                                <div class="metric-value" id="metric-pharmacies">0</div>
+                            </div>
+                            <div class="metric-icon pharmacies"><i class="fa-solid fa-clinic-medical"></i></div>
+                        </div>
+                        <div class="metric-trend positive"><i class="fa-solid fa-toggle-on"></i> Cairo Operations</div>
+                    </div>
+                </div>
+
+                <div class="analytics-charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Revenue & Sales Trend</h3>
+                            <span class="chart-period">Last 7 Days</span>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="revenue-chart-canvas"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Recent System Audit Logs</h3>
+                            <span class="chart-period">Live Updates</span>
+                        </div>
+                        <div class="live-log-container" id="analytics-live-logs">
+                            <p class="empty-notifs">Connecting to live feed...</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section: Users -->
+            <section id="section-users" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="users-search" placeholder="Search by name, email or phone...">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="users-filter-role">
+                            <option value="">All Roles</option>
+                            <option value="patient">Patient</option>
+                            <option value="pharmacy_owner">Pharmacy Owner</option>
+                            <option value="delivery">Delivery Person</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                        <button class="btn-primary inline-btn" id="add-user-btn"><i class="fa-solid fa-plus"></i> Add New User</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>Role</th>
+                                <th>Verification</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Pharmacies -->
+            <section id="section-pharmacies" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="pharmacies-search" placeholder="Search by pharmacy name, owner user_id or address...">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="pharmacies-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active/Approved</option>
+                            <option value="disabled">Disabled/Pending</option>
+                        </select>
+                        <button class="btn-primary inline-btn" id="add-pharmacy-btn"><i class="fa-solid fa-plus"></i> Add Pharmacy</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Pharmacy Name</th>
+                                <th>Address</th>
+                                <th>Phone</th>
+                                <th>Rating</th>
+                                <th>Owner ID</th>
+                                <th>Approval Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pharmacies-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Medicines Catalog -->
+            <section id="section-medicines" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="medicines-search" placeholder="Search medicines in catalog by name...">
+                    </div>
+                    <div class="filter-controls">
+                        <button class="btn-primary inline-btn" id="add-medicine-btn"><i class="fa-solid fa-plus"></i> Add Medicine</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Medicine Name</th>
+                                <th>Generic Name</th>
+                                <th>Adult Dosage</th>
+                                <th>Uses</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="medicines-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Stock Inventory -->
+            <section id="section-inventory" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="inventory-search" placeholder="Search stock by medicine name...">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="inventory-filter-pharmacy">
+                            <option value="">All Pharmacies</option>
+                            <!-- Injected dynamically -->
+                        </select>
+                        <button class="btn-primary inline-btn" id="add-inventory-btn"><i class="fa-solid fa-plus"></i> Add Stock Item</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Medicine Name</th>
+                                <th>Pharmacy</th>
+                                <th>Stock</th>
+                                <th>Price</th>
+                                <th>Expiry</th>
+                                <th>Presc. Required</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Prescriptions -->
+            <section id="section-prescriptions" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="prescriptions-search" placeholder="Search prescriptions by user_id or extracted text...">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="prescriptions-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="uploaded">Uploaded</option>
+                            <option value="processed">Processed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Patient ID</th>
+                                <th>Image Preview</th>
+                                <th>Extracted Medicines</th>
+                                <th>Uploaded At</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prescriptions-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section: Orders -->
+            <section id="section-orders" class="content-section hidden">
+                <div class="table-filter-bar">
+                    <div class="search-box">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" id="orders-search" placeholder="Search orders by ID, pharmacy, customer...">
+                    </div>
+                    <div class="filter-controls">
+                        <select id="orders-filter-status">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="preparing">Preparing</option>
+                            <option value="ready">Ready for pickup</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="picked_up">Picked Up</option>
+                            <option value="in_transit">In Transit</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Customer</th>
+                                <th>Pharmacy</th>
+                                <th>Medicines</th>
+                                <th>Total Price</th>
+                                <th>Delivery Status</th>
+                                <th>Payment</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orders-table-body">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- User Modal -->
+    <div id="user-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-user-modal">&times;</span>
+            <h2 id="user-modal-title">Add New User</h2>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label for="user-name">Full Name</label>
+                    <input type="text" id="user-name" required placeholder="e.g. Lobna Mohamed">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user-email">Email</label>
+                        <input type="email" id="user-email" required placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-phone">Phone Number</label>
+                        <input type="text" id="user-phone" required placeholder="e.g. 01012345678">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user-password">Password (leave blank to keep current)</label>
+                        <input type="password" id="user-password" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-role">Role</label>
+                        <select id="user-role" required>
+                            <option value="patient">Patient</option>
+                            <option value="pharmacy_owner">Pharmacy Owner</option>
+                            <option value="delivery">Delivery Person</option>
+                            <option value="admin">Administrator</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="user-gender">Gender</label>
+                        <select id="user-gender">
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label for="user-verified">
+                            <input type="checkbox" id="user-verified"> Verified / Approved Account
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Save User Account <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pharmacy Modal -->
+    <div id="pharmacy-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-pharmacy-modal">&times;</span>
+            <h2 id="pharmacy-modal-title">Register Pharmacy</h2>
+            <form id="pharmacy-form">
+                <input type="hidden" id="pharmacy-id">
+                <div class="form-group">
+                    <label for="pharmacy-name">Pharmacy Name</label>
+                    <input type="text" id="pharmacy-name" required placeholder="e.g. El Ezaby Pharmacy">
+                </div>
+                <div class="form-group">
+                    <label for="pharmacy-address">Address</label>
+                    <input type="text" id="pharmacy-address" required placeholder="e.g. 15 Tahrir Square, Cairo">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pharmacy-lat">Latitude</label>
+                        <input type="number" step="any" id="pharmacy-lat" value="30.0544">
+                    </div>
+                    <div class="form-group">
+                        <label for="pharmacy-lng">Longitude</label>
+                        <input type="number" step="any" id="pharmacy-lng" value="31.2457">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="pharmacy-phone">Phone</label>
+                        <input type="text" id="pharmacy-phone" placeholder="e.g. 0225123456">
+                    </div>
+                    <div class="form-group">
+                        <label for="pharmacy-owner">Owner User ID</label>
+                        <input type="text" id="pharmacy-owner" placeholder="Paste Owner User ID">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group checkbox-group">
+                        <label for="pharmacy-active">
+                            <input type="checkbox" id="pharmacy-active" checked> Approved & Active
+                        </label>
+                    </div>
+                    <div class="form-group checkbox-group">
+                        <label for="pharmacy-delivery">
+                            <input type="checkbox" id="pharmacy-delivery" checked> Delivery Available
+                        </label>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary">Save Pharmacy <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Medicine Catalog Modal -->
+    <div id="medicine-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-medicine-modal">&times;</span>
+            <h2 id="medicine-modal-title">Catalog New Medicine</h2>
+            <form id="medicine-form">
+                <input type="hidden" id="medicine-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="med-name">Medicine Name</label>
+                        <input type="text" id="med-name" required placeholder="e.g. Conventin">
+                    </div>
+                    <div class="form-group">
+                        <label for="med-generic">Generic Name</label>
+                        <input type="text" id="med-generic" placeholder="e.g. Gabapentin">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="med-image">Image URL</label>
+                    <input type="text" id="med-image" placeholder="/uploads/filename.png or external URL">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="med-dosage-adult">Adult Dosage</label>
+                        <input type="text" id="med-dosage-adult" placeholder="e.g. 300mg three times daily">
+                    </div>
+                    <div class="form-group">
+                        <label for="med-dosage-child">Child Dosage</label>
+                        <input type="text" id="med-dosage-child" placeholder="e.g. Not recommended">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="med-uses">Uses</label>
+                    <textarea id="med-uses" rows="2" placeholder="e.g. Treats nerve pain and seizures."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="med-side-effects">Side Effects</label>
+                    <textarea id="med-side-effects" rows="2" placeholder="e.g. Dizziness, drowsiness."></textarea>
+                </div>
+                <button type="submit" class="btn-primary">Save to Catalog <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="inventory-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-inventory-modal">&times;</span>
+            <h2 id="inventory-modal-title">Add Stock Item</h2>
+            <form id="inventory-form">
+                <input type="hidden" id="inventory-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-pharmacy-id">Pharmacy</label>
+                        <select id="inv-pharmacy-id" required>
+                            <!-- Injected dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-med-name">Medicine Name</label>
+                        <input type="text" id="inv-med-name" required placeholder="e.g. Conventin">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-stock">Stock Quantity</label>
+                        <input type="number" id="inv-stock" required value="100">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-price">Price (EGP)</label>
+                        <input type="number" step="0.01" id="inv-price" required value="45.00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="inv-batch">Batch Number</label>
+                        <input type="text" id="inv-batch" value="B001">
+                    </div>
+                    <div class="form-group">
+                        <label for="inv-expiry">Expiry Date</label>
+                        <input type="date" id="inv-expiry" required>
+                    </div>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label for="inv-presc-req">
+                        <input type="checkbox" id="inv-presc-req" checked> Prescription Required
+                    </label>
+                </div>
+                <button type="submit" class="btn-primary">Save Stock <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Order Details / Manage Modal -->
+    <div id="order-modal" class="modal hidden">
+        <div class="modal-content glass-card">
+            <span class="close-modal" id="close-order-modal">&times;</span>
+            <h2>Manage Order & Driver Assignment</h2>
+            <form id="order-form">
+                <input type="hidden" id="order-id-field">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Order ID</label>
+                        <input type="text" id="order-lbl-id" readonly class="readonly-input">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Price (EGP)</label>
+                        <input type="number" step="0.01" id="order-edit-price" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="order-status-select">Order Status</label>
+                        <select id="order-status-select">
+                            <option value="pending">Pending</option>
+                            <option value="accepted">Accepted</option>
+                            <option value="preparing">Preparing</option>
+                            <option value="ready">Ready for pickup</option>
+                            <option value="assigned">Assigned to Driver</option>
+                            <option value="picked_up">Picked Up</option>
+                            <option value="in_transit">In Transit</option>
+                            <option value="delivered">Delivered</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="order-payment-select">Payment Status</label>
+                        <select id="order-payment-select">
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                            <option value="failed">Failed</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="order-driver-select">Assigned Driver</label>
+                    <select id="order-driver-select">
+                        <option value="">None / Unassigned</option>
+                        <!-- Injected dynamically -->
+                    </select>
+                </div>
+                <button type="submit" class="btn-primary">Update Order <i class="fa-solid fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/admin/app.js"></script>
+</body>
+</html>
