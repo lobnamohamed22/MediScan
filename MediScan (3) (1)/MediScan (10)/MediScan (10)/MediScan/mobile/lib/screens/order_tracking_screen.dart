@@ -43,11 +43,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
   ];
 
   bool _isSimulating = false;
-  LatLng _deviceLocation = const LatLng(30.0444, 31.2357);
+  LatLng _deviceLocation = const LatLng(29.8514, 31.3428);
 
   // Animation properties
-  LatLng _oldDriverPos = const LatLng(30.0544, 31.2457); // default pharmacy location
-  LatLng _currentDriverPos = const LatLng(30.0544, 31.2457);
+  LatLng _oldDriverPos = const LatLng(29.8514, 31.3428); // default pharmacy location
+  LatLng _currentDriverPos = const LatLng(29.8514, 31.3428);
+  LatLng? _targetDriverPos;
   AnimationController? _animationController;
   Animation<double>? _animation;
   bool _isFirstLoad = true;
@@ -126,8 +127,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
             _oldDriverPos.latitude + (newPos.latitude - _oldDriverPos.latitude) * _animation!.value,
             _oldDriverPos.longitude + (newPos.longitude - _oldDriverPos.longitude) * _animation!.value,
           );
-          // Auto-center map on driver as they move
-          _mapController.move(_currentDriverPos, _mapController.camera.zoom);
         });
       }
     });
@@ -172,9 +171,26 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
             if (_isFirstLoad) {
               _currentDriverPos = newPos;
               _oldDriverPos = newPos;
+              _targetDriverPos = newPos;
               _isFirstLoad = false;
-            } else if (newPos != _oldDriverPos) {
-              _animateDriver(newPos);
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (mounted) {
+                  _mapController.move(newPos, 14.0);
+                }
+              });
+            } else if (newPos != _targetDriverPos) {
+              // Snap if large jump (> 200m)
+              if (_calculateDistance(newPos, _currentDriverPos) > 0.2) {
+                _currentDriverPos = newPos;
+                _oldDriverPos = newPos;
+                _targetDriverPos = newPos;
+                _animationController?.stop();
+                _mapController.move(newPos, _mapController.camera.zoom);
+              } else {
+                _targetDriverPos = newPos;
+                _animateDriver(newPos);
+                _mapController.move(newPos, _mapController.camera.zoom);
+              }
             }
           }
         }
@@ -266,6 +282,13 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
         ? LatLng(customerLat, customerLng)
         : _deviceLocation;
 
+    // Initialize driver position to pharmacy position on first load if pharmacy location is loaded
+    if (_isFirstLoad && pharmacyLat != null && pharmacyLng != null) {
+      _currentDriverPos = pharmacyPos;
+      _oldDriverPos = pharmacyPos;
+      _targetDriverPos = pharmacyPos;
+    }
+
     // Initial center on customer home if driver isn't moving, or center on driver
     final initialMapCenter = _isFirstLoad ? customerPos : _currentDriverPos;
 
@@ -273,7 +296,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
     final double remainingDistance = (_currentStatus.toLowerCase() == 'delivered')
         ? 0.0
         : _calculateDistance(
-            (driverLat != null && driverLng != null) ? _currentDriverPos : pharmacyPos,
+            _currentDriverPos,
             customerPos,
           );
     final int etaMinutes = (_currentStatus.toLowerCase() == 'delivered')
@@ -461,7 +484,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                             ),
                           ),
                         ),
-                        // Driver Marker (Blue, Animated, Premium)
+                        // Driver Marker (Blue, Animated, Premium - Motorcycle Icon)
                         if (driverLat != null && driverLng != null)
                           Marker(
                             point: _currentDriverPos,
@@ -481,7 +504,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                                 ],
                               ),
                               child: const Icon(
-                                Icons.delivery_dining,
+                                Icons.motorcycle,
                                 color: Colors.white,
                                 size: 28,
                               ),
@@ -503,6 +526,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                       ),
                     ),
                   ),
+                // Re-center Floating Action Button
+                Positioned(
+                  bottom: 16,
+                  right: 16,
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.blueAccent,
+                    onPressed: () {
+                      _mapController.move(_currentDriverPos, 14.0);
+                    },
+                    child: const Icon(Icons.my_location),
+                  ),
+                ),
               ],
             ),
           ),
@@ -525,120 +562,122 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
               ),
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.blue.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
+                  : SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue.withValues(alpha: 0.1),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.motorcycle,
+                                    color: Colors.blue, size: 30),
                               ),
-                              child: const Icon(Icons.delivery_dining,
-                                  color: Colors.blue, size: 30),
-                            ),
-                            const SizedBox(width: 15),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Your Delivery Driver",
-                                      style: TextStyle(
-                                          color: Colors.grey, fontSize: 14)),
-                                  Text(
-                                      _trackingData?['driver_name'] ??
-                                          'Waiting for assignment...',
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16)),
-                                ],
+                              const SizedBox(width: 15),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text("Your Delivery Driver",
+                                        style: TextStyle(
+                                            color: Colors.grey, fontSize: 14)),
+                                    Text(
+                                        _trackingData?['driver_name'] ??
+                                            'Waiting for assignment...',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 15),
-                        Text(
-                          "Status: ${_currentStatus.replaceAll('_', ' ').toUpperCase()}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
-                            color: Colors.blueGrey.shade700,
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 15),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _buildStatItem(
-                              Icons.directions_bike,
-                              "Distance",
-                              distanceText,
+                          const SizedBox(height: 15),
+                          Text(
+                            "Status: ${_currentStatus.replaceAll('_', ' ').toUpperCase()}",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: Colors.blueGrey.shade700,
                             ),
-                            _buildStatItem(
-                              Icons.access_time,
-                              "ETA",
-                              etaText,
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                onPressed:
-                                    _trackingData?['driver_phone'] != null
-                                        ? () {
-                                            final phone =
-                                                _trackingData!['driver_phone'];
-                                            launchUrl(Uri.parse('tel:$phone'));
-                                          }
-                                        : null,
-                                icon: const Icon(Icons.call),
-                                label: const Text("Call Driver"),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.green,
-                                  foregroundColor: Colors.white,
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
+                          ),
+                          const SizedBox(height: 15),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildStatItem(
+                                Icons.motorcycle,
+                                "Distance",
+                                distanceText,
+                              ),
+                              _buildStatItem(
+                                Icons.access_time,
+                                "ETA",
+                                etaText,
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 20),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed:
+                                      _trackingData?['driver_phone'] != null
+                                          ? () {
+                                              final phone =
+                                                  _trackingData!['driver_phone'];
+                                              launchUrl(Uri.parse('tel:$phone'));
+                                            }
+                                          : null,
+                                  icon: const Icon(Icons.call),
+                                  label: const Text("Call Driver"),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: _trackingData?['driver_name'] != null
-                                    ? () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                OrderChatScreen(
-                                              orderId: widget.orderId,
-                                              driverName:
-                                                  _trackingData!['driver_name'],
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _trackingData?['driver_name'] != null
+                                      ? () {
+                                          Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (context) =>
+                                                  OrderChatScreen(
+                                                orderId: widget.orderId,
+                                                driverName:
+                                                    _trackingData!['driver_name'],
+                                              ),
                                             ),
-                                          ),
-                                        );
-                                      }
-                                    : null,
-                                icon: const Icon(Icons.chat),
-                                label: const Text("Chat"),
-                                style: OutlinedButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 12),
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12)),
+                                          );
+                                        }
+                                      : null,
+                                  icon: const Icon(Icons.chat),
+                                  label: const Text("Chat"),
+                                  style: OutlinedButton.styleFrom(
+                                    padding:
+                                        const EdgeInsets.symmetric(vertical: 12),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12)),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
             ),
           ),

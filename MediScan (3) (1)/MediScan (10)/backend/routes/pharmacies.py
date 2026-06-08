@@ -19,6 +19,7 @@ def transliterate_arabic_to_english(text):
             "MSTFy MHMWD": "Mostafa Mahmoud Pharmacy",
             "Abdel-Khaiek": "Abdel-Khalek Pharmacy",
             "elezaby": "El Ezaby Pharmacy",
+            "elezaby": "El Ezaby Pharmacy",
             "Mti": "MTI Pharmacy",
             "sandy Pharmacy": "Sandy Pharmacy",
             "Sandy pharmacy": "Sandy Pharmacy",
@@ -26,6 +27,52 @@ def transliterate_arabic_to_english(text):
             "Pharmacy SWSN ALHDYTha": "Sawsan Al-Hadeetha Pharmacy",
             "Pharmacy Roushdy": "Roushdy Pharmacy",
             "Pharmacy KARMN": "Carmen Pharmacy",
+            "Pharmacy ShAHBWR": "Shahbour Pharmacy",
+            "Pharmacy FAYQ": "Fayek Pharmacy",
+            "Pharmacy ALMRWa": "Al-Marwa Pharmacy",
+            "Pharmacy AShRF": "Ashraf Pharmacy",
+            "Pharmacy ALWLYD": "Al-Waleed Pharmacy",
+            "Pharmacy JAMAa ALDWL ALARBYa": "Arab League Pharmacy",
+            "Pharmacy ALMMALYK": "Al-Mamalik Pharmacy",
+            "Pharmacy LYLa": "Layla Pharmacy",
+            "Pharmacy ALaSAAF BRMSYS": "Al-Isaaf Pharmacy (Ramses)",
+            "Pharmacy HSNYN": "Hosny Pharmacy",
+            "Pharmacy ABD ALRHMN SALH": "Abdel-Rahman Saleh Pharmacy",
+            "Dr. Pharmacy TARQ ALALKY (AWNY SABQA)": "Dr. Tarek Al-Alky Pharmacy",
+            "Pharmacies SYF": "Seif Pharmacy",
+            "AZBY": "El Ezaby Pharmacy",
+            "NWRMNDY": "Normandy Pharmacy",
+            "Dr. Pharmacy HNAN MHMWD TH": "Dr. Hanan Mahmoud Pharmacy",
+            "Pharmacy AHMD ABW ALFTWH": "Dr. Ahmed Abou Al-Fotouh Pharmacy",
+            "Pharmacy NWR ALASLaM": "Nour Al-Islam Pharmacy",
+            "Pharmacy MSTFy MHMWD": "Mostafa Mahmoud Pharmacy",
+            "Nagui": "Nagui Pharmacy",
+            "Saad": "Saad Pharmacy",
+            "Elezaby": "El Ezaby Pharmacy",
+            "Hindam": "Hindam Pharmacy",
+            "Boon": "Boon Pharmacy",
+            "Hanna pharmacy": "Hanna Pharmacy",
+            "Reham pharmacy": "Reham Pharmacy",
+            "Al-Quds pharmacy": "Al-Quds Pharmacy",
+            "Makram pharmacy": "Makram Pharmacy",
+            "Care pharmacy": "Care Pharmacy",
+            "Al-Safa pharmacy": "Al-Safa Pharmacy",
+            "Dawa2y": "Dawaey Pharmacy",
+            "Africia": "Africa Pharmacy",
+            "Sakla": "Sakla Pharmacy",
+            "Al Azaby": "El Ezaby Pharmacy",
+            "ShARA ALJAMAa ALHDYTha": "Modern University Street",
+            "ShARA ALMNYL": "Manial Street",
+            "ShARA ALWHDH": "El-Wehda Street",
+            "ShARA AHMD TYSYR": "Ahmed Taysir Street",
+            "ShARA BWRSAYD": "Port Said Street",
+            "ShARA FYLYB HNA": "Philip Henein Street",
+            "ShARA ALRWDa": "El-Rowdah Street",
+            "ShARA KhLF ALNADy": "Behind the Club Street",
+            "ShARA AThMAN BN AFAN": "Othman Ibn Affan Street",
+            "HARa ALTMSAH": "El-Temsah Alley",
+            "ALQAHRa": "Cairo",
+            "ABW BKR ALSDYQ": "Abu Bakr Al-Siddiq Street",
         }
         for fr, en in franco_map.items():
             if fr in text:
@@ -310,7 +357,7 @@ def fetch_and_register_osm_pharmacies(lat, lng, radius_km, name_filter=None):
                 is_active=True
             )
             db.session.add(new_p)
-            db.session.commit()
+            db.session.flush()
             
             # seed inventory
             for med in all_meds:
@@ -325,10 +372,18 @@ def fetch_and_register_osm_pharmacies(lat, lng, radius_km, name_filter=None):
                     is_prescription_required=random.choice([True, False])
                 )
                 db.session.add(inv)
-            db.session.commit()
+                
+        db.session.commit()
             
     except Exception as e:
         print(f"Error in fetch_and_register_osm_pharmacies: {e}")
+
+def run_osm_fetch_bg(app, lat, lng, radius):
+    with app.app_context():
+        try:
+            fetch_and_register_osm_pharmacies(lat, lng, radius)
+        except Exception as e:
+            print(f"Background OSM fetch failed: {e}")
 
 # -------------------------------
 # 2. NEARBY PHARMACIES (OSM INTEGRATED + GLOBAL)
@@ -341,6 +396,9 @@ def get_nearby_pharmacies():
         lng = float(request.args.get('lng', 0))
         medicine = request.args.get('medicine', '')
         radius = float(request.args.get('radius', 10.0))
+        # Limit radius to a reasonable maximum (10.0 km) to prevent showing distant Cairo pharmacies
+        if radius > 10.0:
+            radius = 10.0
         
         if lat == 0 or lng == 0:
             return jsonify({'success': False, 'message': 'Location is required'}), 400
@@ -353,12 +411,11 @@ def get_nearby_pharmacies():
                 'message': 'Location is outside Egypt. Nearby pharmacies are restricted to Egypt only.'
             }), 200
         
-        # First try to fetch from external source (OSM)
-        try:
-            fetch_and_register_osm_pharmacies(lat, lng, radius)
-        except Exception as e:
-            # Fall back to local database pharmacies silently
-            print(f"OSM fetch failed: {e}")
+        # Fetch from external source (OSM) in background thread so it doesn't block Flask request thread
+        import threading
+        from flask import current_app
+        app_ctx = current_app._get_current_object()
+        threading.Thread(target=run_osm_fetch_bg, args=(app_ctx, lat, lng, radius)).start()
         
         # Query database with group-by deduplication and direct distance calculation
         if medicine:
@@ -466,6 +523,44 @@ def get_nearby_pharmacies():
 
 
 # -------------------------------
+# 2.5 FALLBACK PHARMACIES
+# -------------------------------
+@pharmacies_bp.route('/fallback', methods=['GET'])
+@jwt_required()
+def get_fallback_pharmacies():
+    try:
+        # Query up to 20 active pharmacies inside Egypt, sorted by rating
+        pharmacies = Pharmacy.query.filter(
+            Pharmacy.is_active == 1,
+            Pharmacy.latitude.between(22.0, 32.0),
+            Pharmacy.longitude.between(24.0, 37.0)
+        ).order_by(Pharmacy.rating.desc()).limit(20).all()
+        
+        results = []
+        for p in pharmacies:
+            results.append({
+                'id': p.pharmacy_id,
+                'name': transliterate_arabic_to_english(p.name),
+                'address': transliterate_arabic_to_english(p.address),
+                'phone': p.phone,
+                'rating': float(p.rating) if p.rating else 0.0,
+                'delivery_available': p.delivery_available,
+                'price': 0.0,
+                'stock_quantity': 0,
+                'distance': None,  # Distance is null when GPS is unavailable
+                'latitude': float(p.latitude) if p.latitude else 0.0,
+                'longitude': float(p.longitude) if p.longitude else 0.0,
+            })
+            
+        return jsonify({
+            'success': True,
+            'data': results
+        }), 200
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# -------------------------------
 # 3. SEARCH PHARMACIES (GLOBAL)
 # -------------------------------
 def calculate_haversine(lat1, lon1, lat2, lon2):
@@ -507,6 +602,7 @@ def search_pharmacies():
 
         # Restrict pharmacy search results strictly to Egypt boundaries
         pharmacies = Pharmacy.query.filter(
+            Pharmacy.is_active == 1,
             Pharmacy.name.ilike(f'%{name}%'),
             Pharmacy.latitude.between(22.0, 32.0),
             Pharmacy.longitude.between(24.0, 37.0)
@@ -520,6 +616,9 @@ def search_pharmacies():
             p_dict['address'] = transliterate_arabic_to_english(p_dict['address'])
             if user_lat is not None and user_lng is not None:
                 dist = calculate_haversine(user_lat, user_lng, p_lat, p_lng)
+                # Limit results to 10 km radius from user's current GPS location
+                if dist > 10.0:
+                    continue
                 p_dict['distance'] = round(dist, 2)
             else:
                 p_dict['distance'] = None
@@ -527,6 +626,9 @@ def search_pharmacies():
         
         if user_lat is not None and user_lng is not None:
             result.sort(key=lambda x: x.get('distance') if x.get('distance') is not None else 999999.0)
+            
+        # Never display all matching pharmacies at once (cap to 20 results)
+        result = result[:20]
             
         return jsonify({
             'success': True,

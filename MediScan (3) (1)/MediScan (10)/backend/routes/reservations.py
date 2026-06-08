@@ -37,12 +37,11 @@ def create_reservation():
         user = User.query.filter_by(user_id=user_id).first()
         if user:
             user.reward_points = (user.reward_points or 0) + 10
-            user.wallet_balance = (user.reward_points) * 0.1
             tx = WalletTransaction(
                 user_id=user_id,
                 transaction_type='earn',
                 points=10,
-                amount=1.0,
+                amount=0.0,
                 description=f"Points earned for reservation"
             )
             db.session.add(tx)

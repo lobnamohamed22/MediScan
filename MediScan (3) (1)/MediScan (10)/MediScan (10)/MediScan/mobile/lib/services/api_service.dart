@@ -478,6 +478,26 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getFallbackPharmacies() async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedGet('$baseUrl/pharmacies/fallback');
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        try {
+          return jsonDecode(response.body);
+        } catch (e) {
+          return {'success': false, 'message': 'Invalid server response'};
+        }
+      }
+      return {'success': false, 'message': 'Failed to get fallback pharmacies'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
   static Future<Map<String, dynamic>> getPharmacyInventoryById(String pharmacyId) async {
     try {
       await _validateAuthentication();
@@ -946,6 +966,22 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> shareApp() async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedPost('$baseUrl/wallet/share', {});
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to share app'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
   static Future<Map<String, dynamic>> getCheckoutPreview(int redeemPoints) async {
     try {
       await _validateAuthentication();
@@ -992,4 +1028,26 @@ class ApiService {
       return {'success': false, 'message': 'Network error'};
     }
   }
+
+  // ================= REORDER =================
+  static Future<Map<String, dynamic>> reorder(String orderId) async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedPost('$baseUrl/orders/$orderId/reorder', {});
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 201) {
+        try {
+          return jsonDecode(response.body);
+        } catch (e) {
+          return {'success': false, 'message': 'Invalid server response'};
+        }
+      }
+      return {'success': false, 'message': 'Failed to reorder'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
 }
+

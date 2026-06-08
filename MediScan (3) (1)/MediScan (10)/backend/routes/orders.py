@@ -291,6 +291,9 @@ def simulation_worker(app_context, order_id):
                     message="Your order has been successfully delivered!"
                 )
                 db.session.add(notif)
+                
+
+                        
                 db.session.commit()
         except Exception as e:
             db.session.rollback()
@@ -705,6 +708,8 @@ def update_order_status(order_id):
                 )
                 db.session.add(driver_notif)
             
+
+                
         db.session.commit()
         return jsonify({'success': True, 'message': 'Status updated', 'data': order.to_dict()}), 200
     except Exception as e:
@@ -790,6 +795,94 @@ def accept_delivery(order_id):
             
         db.session.commit()
         return jsonify({'success': True, 'message': 'Delivery accepted', 'data': order.to_dict()}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# -------------------------------
+# 8.75 REORDER PREVIOUS ORDER
+# -------------------------------
+@orders_bp.route('/<string:order_id>/reorder', methods=['POST'])
+@jwt_required()
+def reorder_order(order_id):
+    try:
+        user_id = get_jwt_identity()
+        old_order = DeliveryOrder.query.get(order_id)
+        if not old_order:
+            return jsonify({'success': False, 'message': 'Order not found'}), 404
+            
+        if old_order.user_id != user_id:
+            return jsonify({'success': False, 'message': 'Unauthorized to reorder this order'}), 403
+            
+        new_order = DeliveryOrder(
+            user_id=user_id,
+            pharmacy_id=old_order.pharmacy_id,
+            quantity=old_order.quantity,
+            total_price=old_order.total_price,
+            status='assigned',
+            payment_status='pending',
+            medicines=old_order.medicines,
+            customer_lat=old_order.customer_lat,
+            customer_lng=old_order.customer_lng
+        )
+        db.session.add(new_order)
+        
+        # Decrement stock in pharmacy inventory
+        from models.medicine import MedicineInventory
+        pharmacy_id = old_order.pharmacy_id
+        for m in (old_order.medicines or []):
+            if isinstance(m, dict):
+                med_name = m.get('name') or m.get('medicine_name')
+                qty = m.get('quantity', 1)
+            else:
+                med_name = str(m)
+                qty = 1
+                if " x" in med_name:
+                    parts = med_name.split(" x")
+                    med_name = parts[0].strip()
+                    try:
+                        qty = int(parts[1])
+                    except:
+                        qty = 1
+            if med_name:
+                inv_item = MedicineInventory.query.filter_by(
+                    pharmacy_id=pharmacy_id,
+                    medicine_name=med_name
+                ).first()
+                if inv_item:
+                    inv_item.stock_quantity = max(0, inv_item.stock_quantity - qty)
+                    
+        # Get pharmacy name
+        pharmacy_name = "the pharmacy"
+        pharm_obj = Pharmacy.query.get(pharmacy_id)
+        if pharm_obj and pharm_obj.name:
+            pharmacy_name = pharm_obj.name
+
+        # Create notification for order placement
+        from models.notification import Notification
+        notif = Notification(
+            user_id=user_id,
+            type='order',
+            message=f"Your reorder for {new_order.quantity} item(s) has been successfully placed at {pharmacy_name}!"
+        )
+        db.session.add(notif)
+        
+        # Notify pharmacy owner
+        if pharm_obj and pharm_obj.owner_id:
+            notif_owner = Notification(
+                user_id=pharm_obj.owner_id,
+                type='order',
+                message=f"New incoming reorder placed for pharmacy {pharmacy_name}!"
+            )
+            db.session.add(notif_owner)
+            
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Order successfully reordered',
+            'data': new_order.to_dict()
+        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({'success': False, 'message': str(e)}), 500

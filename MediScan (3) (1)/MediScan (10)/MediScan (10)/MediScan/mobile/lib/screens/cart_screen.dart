@@ -15,9 +15,6 @@ class _CartScreenState extends State<CartScreen> {
   List<dynamic> _cartItems = [];
   double _totalPrice = 0.0;
   int _userPoints = 0;
-  bool _usePoints = false;
-  double _pointsDiscount = 0.0;
-  double _finalTotalPrice = 0.0;
 
   @override
   void initState() {
@@ -43,7 +40,6 @@ class _CartScreenState extends State<CartScreen> {
           if (walletRes['success'] == true) {
             _userPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
           }
-          _updatePointsDiscount();
           _isLoading = false;
         });
       } else {
@@ -55,21 +51,7 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  void _updatePointsDiscount() {
-    if (_usePoints && _userPoints > 0) {
-      double pointsValue = _userPoints * 0.1;
-      if (pointsValue > _totalPrice) {
-        _pointsDiscount = _totalPrice;
-        _finalTotalPrice = 0.0;
-      } else {
-        _pointsDiscount = pointsValue;
-        _finalTotalPrice = _totalPrice - pointsValue;
-      }
-    } else {
-      _pointsDiscount = 0.0;
-      _finalTotalPrice = _totalPrice;
-    }
-  }
+
 
   Future<void> _updateQuantity(String cartItemId, int newQuantity) async {
     if (newQuantity < 1) {
@@ -111,17 +93,7 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _checkout() async {
     setState(() => _isLoading = true);
 
-    int redeemPoints = 0;
-    if (_usePoints && _userPoints > 0) {
-      double pointsValue = _userPoints * 0.1;
-      if (pointsValue > _totalPrice) {
-        redeemPoints = (_totalPrice * 10).toInt();
-      } else {
-        redeemPoints = _userPoints;
-      }
-    }
-
-    final res = await ApiService.checkoutCart(redeemPoints: redeemPoints);
+    final res = await ApiService.checkoutCart();
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -295,35 +267,6 @@ class _CartScreenState extends State<CartScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_userPoints > 0) ...[
-              CheckboxListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(
-                  'Redeem Points (Available: $_userPoints pts)',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-                ),
-                subtitle: Text(
-                  _usePoints
-                      ? 'Discount: -${_pointsDiscount.toStringAsFixed(2)} EGP'
-                      : 'Equiv. to ${(_userPoints * 0.1).toStringAsFixed(2)} EGP',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: _usePoints ? Colors.red : Colors.grey,
-                  ),
-                ),
-                value: _usePoints,
-                onChanged: (val) {
-                  setState(() {
-                    _usePoints = val ?? false;
-                    _updatePointsDiscount();
-                  });
-                },
-                activeColor: Colors.blue,
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-              const Divider(),
-              const SizedBox(height: 8),
-            ],
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -333,18 +276,8 @@ class _CartScreenState extends State<CartScreen> {
                   children: [
                     const Text('Total Price',
                         style: TextStyle(color: Colors.grey, fontSize: 14)),
-                    if (_pointsDiscount > 0) ...[
-                      Text(
-                        '${_totalPrice.toStringAsFixed(2)} EGP',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          decoration: TextDecoration.lineThrough,
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ],
                     Text(
-                      '${_finalTotalPrice.toStringAsFixed(2)} EGP',
+                      '${_totalPrice.toStringAsFixed(2)} EGP',
                       style: const TextStyle(
                           fontSize: 20, fontWeight: FontWeight.bold),
                     ),

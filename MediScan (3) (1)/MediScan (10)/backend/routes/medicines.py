@@ -142,6 +142,19 @@ def search_medicines():
         data = [item for score, item in deduplicated.values()]
         data.sort(key=lambda x: x['medicine_name'])
 
+        # Optional page-based pagination
+        page = request.args.get('page')
+        limit = request.args.get('limit')
+        if page and limit:
+            try:
+                page = int(page)
+                limit = int(limit)
+                start_idx = (page - 1) * limit
+                end_idx = start_idx + limit
+                data = data[start_idx:end_idx]
+            except ValueError:
+                pass
+
         return jsonify({
             'success': True,
             'data': data

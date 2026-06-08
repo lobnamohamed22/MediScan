@@ -13,8 +13,8 @@ class _WalletScreenState extends State<WalletScreen> {
   bool _isLoading = true;
   String _errorMessage = '';
   int _rewardPoints = 0;
-  double _walletBalance = 0.0;
   List<dynamic> _transactions = [];
+  String _rewardLevel = 'Bronze';
 
   @override
   void initState() {
@@ -36,7 +36,7 @@ class _WalletScreenState extends State<WalletScreen> {
         if (walletRes['success'] == true && txRes['success'] == true) {
           setState(() {
             _rewardPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
-            _walletBalance = double.tryParse(walletRes['data']['wallet_balance'].toString()) ?? 0.0;
+            _rewardLevel = walletRes['data']['reward_level']?.toString() ?? 'Bronze';
             _transactions = txRes['data'] ?? [];
             _isLoading = false;
           });
@@ -115,6 +115,40 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 
   Widget _buildWalletCard() {
+    Color levelColor;
+    String nextLevelName = '';
+    int nextLevelPoints = 0;
+
+    switch (_rewardLevel.toLowerCase()) {
+      case 'platinum':
+        levelColor = const Color(0xFFE5E5E5); // Platinum
+        break;
+      case 'gold':
+        levelColor = const Color(0xFFFFD700); // Gold
+        nextLevelName = 'Platinum';
+        nextLevelPoints = 1501;
+        break;
+      case 'silver':
+        levelColor = const Color(0xFFC0C0C0); // Silver
+        nextLevelName = 'Gold';
+        nextLevelPoints = 501;
+        break;
+      default:
+        levelColor = const Color(0xFFCD7F32); // Bronze
+        nextLevelName = 'Silver';
+        nextLevelPoints = 101;
+    }
+
+    double progress = 1.0;
+    if (nextLevelName.isNotEmpty) {
+      int prevThreshold = 0;
+      if (_rewardLevel.toLowerCase() == 'silver') prevThreshold = 100;
+      if (_rewardLevel.toLowerCase() == 'gold') prevThreshold = 500;
+      progress = (_rewardPoints - prevThreshold) / (nextLevelPoints - prevThreshold);
+      if (progress < 0.0) progress = 0.0;
+      if (progress > 1.0) progress = 1.0;
+    }
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -140,99 +174,204 @@ class _WalletScreenState extends State<WalletScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'MediScan Rewards',
+                'MediScan Loyalty Club',
                 style: GoogleFonts.poppins(
                   fontSize: 16,
                   color: Colors.white70,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-              const Icon(
-                Icons.stars_rounded,
-                color: Colors.amber,
-                size: 28,
-              ),
-            ],
-          ),
-          const SizedBox(height: 28),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '$_rewardPoints pts',
-                    style: GoogleFonts.poppins(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Equivalent Discount Value',
-                    style: GoogleFonts.roboto(
-                      fontSize: 12,
-                      color: Colors.white60,
-                    ),
-                  ),
-                ],
-              ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
+                  color: levelColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: levelColor, width: 1.5),
                 ),
-                child: Text(
-                  '${_walletBalance.toStringAsFixed(2)} EGP',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.amber[300],
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.military_tech, color: levelColor, size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      _rewardLevel.toUpperCase(),
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          Text(
+            '$_rewardPoints Points',
+            style: GoogleFonts.poppins(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (nextLevelName.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.white12,
+                valueColor: AlwaysStoppedAnimation<Color>(levelColor),
+                minHeight: 6,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              '${nextLevelPoints - _rewardPoints} points to unlock $nextLevelName level',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                color: Colors.white60,
+              ),
+            ),
+          ] else ...[
+            Text(
+              'You have reached Platinum, the highest level!',
+              style: GoogleFonts.roboto(
+                fontSize: 12,
+                color: Colors.white60,
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
 
   Widget _buildNoticeBox() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.blue.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, color: Colors.blue, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Conversion Rate: 10 Points = 1.00 EGP discount.\nPoints are earned automatically for purchases (1pt/10 EGP spent) and reservations (10pts/reservation).',
-              style: GoogleFonts.roboto(
-                fontSize: 13,
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white70
-                    : Colors.black54,
-                height: 1.4,
-              ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'How to Earn Points',
+          style: GoogleFonts.poppins(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: isDark ? Colors.white : Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            children: [
+              _buildEarnRow(Icons.shopping_bag_outlined, 'Purchasing & Reserving', 'Earn points when purchasing or reserving medicines.'),
+              const Divider(height: 20),
+              _buildEarnRow(Icons.share_outlined, 'Referring & Sharing', 'Earn bonus points when sharing the app or referring friends.'),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: ElevatedButton.icon(
+            onPressed: _shareAndEarn,
+            icon: const Icon(Icons.share, color: Colors.white),
+            label: const Text('Share App & Get 50 Points', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal.shade700,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
+  Widget _buildEarnRow(IconData icon, String title, String description) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: Colors.blue, size: 24),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                description,
+                style: GoogleFonts.roboto(
+                  fontSize: 12,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _shareAndEarn() async {
+    setState(() => _isLoading = true);
+    try {
+      final res = await ApiService.shareApp();
+      if (mounted) {
+        if (res['success'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thank you for sharing! +50 Loyalty Points added to your account.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          _fetchWalletData();
+        } else {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(res['message'] ?? 'Failed to share app.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error sharing application.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildTransactionsList() {
-    if (_transactions.isEmpty) {
+    final filteredTransactions = _transactions.where((tx) {
+      final desc = (tx['description'] ?? '').toString().toLowerCase();
+      return !desc.contains('delivery') && !desc.contains('motorcycle') && !desc.contains('route');
+    }).toList();
+
+    if (filteredTransactions.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.only(top: 40),
@@ -253,12 +392,11 @@ class _WalletScreenState extends State<WalletScreen> {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: _transactions.length,
+      itemCount: filteredTransactions.length,
       itemBuilder: (context, index) {
-        final tx = _transactions[index];
+        final tx = filteredTransactions[index];
         final type = tx['type'] ?? 'earn';
         final points = tx['points'] ?? 0;
-        final amount = double.tryParse(tx['amount'].toString()) ?? 0.0;
         final desc = tx['description'] ?? 'Points transaction';
         final isEarn = type == 'earn' || points > 0;
 
@@ -288,26 +426,13 @@ class _WalletScreenState extends State<WalletScreen> {
                   : '',
               style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            trailing: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${isEarn ? "+" : ""}$points pts',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    color: isEarn ? Colors.green : Colors.red,
-                    fontSize: 15,
-                  ),
-                ),
-                Text(
-                  '${isEarn ? "+" : "-"}${amount.toStringAsFixed(2)} EGP',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isEarn ? Colors.green[700] : Colors.red[700],
-                  ),
-                ),
-              ],
+            trailing: Text(
+              '${isEarn ? "+" : ""}$points Points',
+              style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                color: isEarn ? Colors.green : Colors.red,
+                fontSize: 15,
+              ),
             ),
           ),
         );

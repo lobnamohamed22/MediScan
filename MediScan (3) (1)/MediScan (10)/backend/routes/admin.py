@@ -58,7 +58,18 @@ def get_users():
         if not is_admin(user_id):
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
             
-        users = User.query.all()
+        page = request.args.get('page')
+        limit = request.args.get('limit')
+        query = User.query
+        if page and limit:
+            try:
+                page = int(page)
+                limit = int(limit)
+                query = query.limit(limit).offset((page - 1) * limit)
+            except ValueError:
+                pass
+                
+        users = query.all()
         return jsonify({
             'success': True,
             'data': [u.to_dict() for u in users]
@@ -205,7 +216,18 @@ def get_pharmacies():
         if not is_admin(user_id):
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
             
-        pharmacies = Pharmacy.query.all()
+        page = request.args.get('page')
+        limit = request.args.get('limit')
+        query = Pharmacy.query
+        if page and limit:
+            try:
+                page = int(page)
+                limit = int(limit)
+                query = query.limit(limit).offset((page - 1) * limit)
+            except ValueError:
+                pass
+                
+        pharmacies = query.all()
         return jsonify({
             'success': True,
             'data': [p.to_dict() for p in pharmacies]
@@ -334,7 +356,18 @@ def get_medicines():
         if not is_admin(user_id):
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
             
-        medicines = MedicineInfo.query.all()
+        page = request.args.get('page')
+        limit = request.args.get('limit')
+        query = MedicineInfo.query
+        if page and limit:
+            try:
+                page = int(page)
+                limit = int(limit)
+                query = query.limit(limit).offset((page - 1) * limit)
+            except ValueError:
+                pass
+                
+        medicines = query.all()
         return jsonify({
             'success': True,
             'data': [m.to_dict() for m in medicines]
@@ -447,7 +480,18 @@ def get_inventory():
         if not is_admin(user_id):
             return jsonify({'success': False, 'message': 'Unauthorized'}), 403
             
-        inv = MedicineInventory.query.all()
+        page = request.args.get('page')
+        limit = request.args.get('limit')
+        query = MedicineInventory.query
+        if page and limit:
+            try:
+                page = int(page)
+                limit = int(limit)
+                query = query.limit(limit).offset((page - 1) * limit)
+            except ValueError:
+                pass
+                
+        inv = query.all()
         return jsonify({
             'success': True,
             'data': [i.to_dict() for i in inv]

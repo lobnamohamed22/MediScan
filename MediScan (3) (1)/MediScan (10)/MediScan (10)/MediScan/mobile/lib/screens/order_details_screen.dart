@@ -29,6 +29,7 @@ class OrderDetailsScreen extends StatefulWidget {
 
 class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   bool _isAddingToCart = false;
+  bool _isReordering = false;
   List<Map<String, dynamic>> _resolvedMedicines = [];
   double _calculatedTotal = 0.0;
   bool _isLoadingPrices = true;
@@ -232,6 +233,33 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
+  Future<void> _reorder() async {
+    setState(() => _isReordering = true);
+    
+    final result = await ApiService.reorder(widget.orderId);
+    
+    if (!mounted) return;
+    
+    setState(() => _isReordering = false);
+    
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Order reordered successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.pop(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result['message'] ?? 'Failed to reorder'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Color _statusColor(String s) {
     switch (s.toLowerCase()) {
       case 'pending':
@@ -258,6 +286,46 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            if (widget.status.toLowerCase() == 'delivered' || widget.status.toLowerCase() == 'completed')
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.3), width: 1.5),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 28),
+                    SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '✔ Delivered Successfully',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'This order has been completed and received.',
+                            style: TextStyle(
+                              color: Colors.green,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             if (widget.status == 'preview' || widget.status == 'pending')
               Card(
                 shape: RoundedRectangleBorder(
@@ -430,7 +498,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                         },
                                       ),
                                     ] else ...[
-                                      Text('Qty: $qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      Text('Qty: $qty • ${price.toStringAsFixed(2)} EGP per item', style: const TextStyle(color: Colors.grey)),
                                     ],
                                   ],
                                 ),
@@ -468,9 +536,11 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: ListTile(
-                title: const Text(
-                  'Total',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                title: Text(
+                  (widget.status.toLowerCase() == 'delivered' || widget.status.toLowerCase() == 'completed')
+                      ? 'Total Amount Paid'
+                      : 'Total',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 trailing: Text(
                   '${_calculatedTotal.toStringAsFixed(2)} EGP',
@@ -484,33 +554,65 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 25),
-          child: SizedBox(
-            height: 55,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.shopping_cart),
-              label: _isAddingToCart
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                    )
-                  : const Text(
-                      'Add to Cart',
-                      style: TextStyle(fontSize: 16),
+      bottomNavigationBar: (widget.status.toLowerCase() == 'delivered' || widget.status.toLowerCase() == 'completed')
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 25),
+                child: SizedBox(
+                  height: 55,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.replay),
+                    label: _isReordering
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Reorder',
+                            style: TextStyle(fontSize: 16),
+                          ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.teal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-              style: ElevatedButton.styleFrom(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                    onPressed: _isReordering ? null : _reorder,
+                  ),
                 ),
               ),
-              onPressed: _isAddingToCart ? null : _addToCart,
-            ),
-          ),
-        ),
-      ),
+            )
+          : (widget.status.toLowerCase() == 'preview' || widget.status.toLowerCase() == 'pending')
+              ? SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 25),
+                    child: SizedBox(
+                      height: 55,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.shopping_cart),
+                        label: _isAddingToCart
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : const Text(
+                                'Add to Cart',
+                                style: TextStyle(fontSize: 16),
+                              ),
+                        style: ElevatedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _isAddingToCart ? null : _addToCart,
+                      ),
+                    ),
+                  ),
+                )
+              : null,
     );
   }
 

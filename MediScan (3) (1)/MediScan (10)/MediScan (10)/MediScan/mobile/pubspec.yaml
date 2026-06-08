@@ -11,30 +11,30 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  flutter_map: ^6.1.0
+  flutter_map: ^8.3.0
   latlong2: ^0.9.0
   # Essentials only 
-  google_fonts: ^6.1.0
+  google_fonts: ^8.1.0
   image_picker: ^1.0.4
-  geolocator: ^11.0.0
+  geolocator: ^14.0.2
   shared_preferences: ^2.2.2
   provider: ^6.1.1
   url_launcher: ^6.2.2
   intl: ^0.20.2
-  fluttertoast: ^8.2.2
-  permission_handler: ^11.0.1
+  fluttertoast: ^9.1.0
+  permission_handler: ^12.0.3
   flutter_svg: ^2.0.9
-  lottie: ^2.7.0
+  lottie: ^3.3.3
   flutter_gen: ^5.10.0
   http: ^1.6.0
   flutter_secure_storage: ^10.0.0
-  flutter_map_cancellable_tile_provider: ^2.0.0
+  flutter_map_cancellable_tile_provider: ^3.1.1
   flutter_localization: ^0.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1
+  flutter_lints: ^6.0.0
 
 flutter:
   generate: true

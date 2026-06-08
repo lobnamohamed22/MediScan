@@ -200,34 +200,7 @@ def checkout():
         from models.wallet import WalletTransaction
         user = User.query.filter_by(user_id=user_id).first()
         
-        if redeem_points > 0:
-            if not user:
-                return jsonify({'success': False, 'message': 'User not found'}), 404
-            user_pts = user.reward_points if user.reward_points is not None else 0
-            if user_pts < redeem_points:
-                return jsonify({'success': False, 'message': f'Insufficient points. Available: {user_pts}'}), 400
-            
-            points_value = redeem_points * 0.1
-            if points_value > subtotal:
-                discount = subtotal
-                points_to_use = int(subtotal * 10)
-            else:
-                discount = points_value
-                points_to_use = redeem_points
-                
-            user.reward_points = (user.reward_points or 0) - points_to_use
-            user.wallet_balance = (user.reward_points) * 0.1
-            
-            tx_redeem = WalletTransaction(
-                user_id=user_id,
-                transaction_type='redeem',
-                points=-points_to_use,
-                amount=discount,
-                description=f"Points redeemed for discount on checkout"
-            )
-            db.session.add(tx_redeem)
-            
-        final_price = subtotal - discount
+        final_price = subtotal
             
         pharmacy = None
         if cart.pharmacy_id:
@@ -257,18 +230,9 @@ def checkout():
         
         db.session.add(new_order)
         
-        points_earned = int(final_price / 10)
-        if points_earned > 0 and user:
-            user.reward_points = (user.reward_points or 0) + points_earned
-            user.wallet_balance = (user.reward_points) * 0.1
-            tx_earn = WalletTransaction(
-                user_id=user_id,
-                transaction_type='earn',
-                points=points_earned,
-                amount=points_earned * 0.1,
-                description=f"Points earned for order"
-            )
-            db.session.add(tx_earn)
+        # Earn points based on order value size: Small: 15 pts, Medium: 50 pts, Large: 150 pts
+        # (Postponed: loyalty points rules will be defined later, do not automatically award points based on fixed order sizes at this stage)
+        points_earned = 0
             
         for item in cart.items:
             db.session.delete(item)
@@ -324,28 +288,14 @@ def checkout_preview():
         user = User.query.filter_by(user_id=user_id).first()
         user_pts = user.reward_points if (user and user.reward_points is not None) else 0
         
-        if redeem_points > user_pts:
-            redeem_points = user_pts
-            
-        points_value = redeem_points * 0.1
-        if points_value > subtotal:
-            discount = subtotal
-            points_to_use = int(subtotal * 10)
-        else:
-            discount = points_value
-            points_to_use = redeem_points
-            
-        final_price = subtotal - discount
-        points_balance_after = user_pts - points_to_use
-        
         return jsonify({
             'success': True,
             'data': {
                 'subtotal': subtotal,
-                'discount': discount,
-                'final_price': final_price,
-                'points_to_redeem': points_to_use,
-                'points_balance_after': points_balance_after
+                'discount': 0.0,
+                'final_price': subtotal,
+                'points_to_redeem': 0,
+                'points_balance_after': user_pts
             }
         }), 200
     except Exception as e:

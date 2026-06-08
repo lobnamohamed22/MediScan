@@ -26,6 +26,9 @@ class PharmacySearchScreen extends StatefulWidget {
 class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
   final TextEditingController _searchController = TextEditingController();
 
+  // In-memory static cache to hold pharmacies across screen pushes/pops
+  static List<Pharmacy> _cachedPharmacies = [];
+
   bool _loadingLocation = false;
   bool _isLoading = false;
   Position? _userPosition;
@@ -39,10 +42,9 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
   List<Pharmacy> _filtered = [];
   Timer? _debounce;
 
-  // Real-time GPS search radius (default 5 km, no UI slider as requested)
-  final double _searchRadius = 5.0; 
-  bool _simulateCairo = false; // Simulated location toggle for testing Egypt mock data
-  LocationPermission _permissionStatus = LocationPermission.denied;
+  // Real-time GPS search radius (default 10 km, no UI slider as requested)
+  final double _searchRadius = 10.0; 
+  bool _isUsingGPS = false;
   StreamSubscription<Position>? _positionStream;
 
   double? _lastFetchedLat;
@@ -52,8 +54,15 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
   @override
   void initState() {
     super.initState();
+    // Instantly load from cache to ensure UI is responsive
+    _allPharmacies = List<Pharmacy>.from(_cachedPharmacies);
+    _filtered = List<Pharmacy>.from(_cachedPharmacies);
     _searchController.addListener(_onSearchChanged);
-    _checkLocationAndStart();
+    
+    // If cache is empty, load fallback pharmacies instantly in background
+    if (_allPharmacies.isEmpty) {
+      _applyFilters();
+    }
   }
 
   @override
@@ -72,55 +81,80 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
     });
   }
 
-  Future<void> _checkLocationAndStart() async {
+  Future<void> _requestLocationAndQuery() async {
     setState(() {
       _loadingLocation = true;
       _errorMessage = '';
-      _lastFetchedLat = null;
-      _lastFetchedLng = null;
-      _lastFetchedQuery = '';
     });
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      LocationPermission permission = await Geolocator.checkPermission();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location services are disabled on your device.'),
+            backgroundColor: Colors.orangeAccent,
+          ),
+        );
+        setState(() {
+          _loadingLocation = false;
+        });
+        return;
+      }
 
+      LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
 
-      if (mounted) {
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Location permission was denied. Keeping database pharmacies.'),
+            backgroundColor: Colors.orangeAccent,
+          ),
+        );
         setState(() {
-          _permissionStatus = permission;
-          _simulateCairo = false; // Reset simulation when verifying real GPS
+          _loadingLocation = false;
         });
+        return;
       }
 
-      if (permission == LocationPermission.whileInUse ||
-          permission == LocationPermission.always) {
-        if (!serviceEnabled) {
-          if (mounted) {
-            setState(() {
-              _errorMessage = "Location services are disabled. Please enable location/GPS services on your device.";
-              _isLoading = false;
-            });
-          }
-          return;
-        }
-        _startListeningLocation();
-      } else {
-        _stopListeningLocation();
-      }
+      // Fetch current position with a timeout
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 6),
+      );
+
+      setState(() {
+        _userPosition = position;
+        _isUsingGPS = true;
+        _loadingLocation = false;
+      });
+
+      // Query nearby pharmacies based on GPS coordinates
+      await _applyFilters(force: true);
+
+      // Start listening to future position updates
+      _startListeningLocation();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GPS Location obtained. Showing nearby pharmacies.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
     } catch (e) {
-      debugPrint("Error checking location: $e");
-      if (mounted) {
-        setState(() {
-          _errorMessage = "Location services error. Please try again.";
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _loadingLocation = false);
-      }
+      debugPrint("Error requesting location: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not obtain GPS location: $e. Keeping database pharmacies.'),
+          backgroundColor: Colors.orangeAccent,
+        ),
+      );
+      setState(() {
+        _loadingLocation = false;
+      });
     }
   }
 
@@ -128,7 +162,7 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
     _positionStream?.cancel();
     const settings = LocationSettings(
       accuracy: LocationAccuracy.high,
-      distanceFilter: 15, // Update when user moves 15 meters
+      distanceFilter: 50, // 50 meters to reduce jitter and excessive API hits
     );
 
     _positionStream = Geolocator.getPositionStream(locationSettings: settings)
@@ -136,95 +170,13 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
       if (mounted) {
         setState(() {
           _userPosition = position;
+          _isUsingGPS = true;
         });
         _applyFilters();
       }
     }, onError: (err) {
       debugPrint("Location stream error: $err");
-      if (mounted && _userPosition == null) {
-        setState(() {
-          _errorMessage = "Location stream error: $err";
-        });
-      }
     });
-
-    // Get initial position immediately with a timeout limit of 6 seconds to prevent hanging
-    Geolocator.getCurrentPosition(
-      desiredAccuracy: LocationAccuracy.high,
-      timeLimit: const Duration(seconds: 6),
-    ).then((pos) {
-      if (mounted) {
-        setState(() {
-          _userPosition = pos;
-          _errorMessage = '';
-        });
-        _applyFilters();
-      }
-    }).catchError((err) {
-      debugPrint("Error getting initial position: $err");
-      // Fallback: Try to get last known position
-      Geolocator.getLastKnownPosition().then((lastPos) {
-        if (lastPos != null && mounted) {
-          setState(() {
-            _userPosition = lastPos;
-            _errorMessage = '';
-          });
-          _applyFilters();
-        } else {
-          // If no last known position, fall back to Cairo simulation so screen doesn't block
-          if (mounted) {
-            setState(() {
-              _simulateCairo = true;
-              _errorMessage = '';
-              _isLoading = false;
-            });
-            _applyFilters();
-          }
-        }
-      }).catchError((_) {
-        // Double fallback to Cairo simulation on any exception
-        if (mounted) {
-          setState(() {
-            _simulateCairo = true;
-            _errorMessage = '';
-            _isLoading = false;
-          });
-          _applyFilters();
-        }
-      });
-    });
-  }
-
-  void _stopListeningLocation() {
-    _positionStream?.cancel();
-    _positionStream = null;
-    _userPosition = null;
-    setState(() {
-      _filtered = [];
-    });
-  }
-
-  void _enableCairoSimulation() {
-    _stopListeningLocation();
-    setState(() {
-      _simulateCairo = true;
-      _permissionStatus = LocationPermission.always; // Bypass permission layout
-      _errorMessage = '';
-      _lastFetchedLat = null;
-      _lastFetchedLng = null;
-      _lastFetchedQuery = '';
-    });
-    _applyFilters();
-  }
-
-  void _disableCairoSimulation() {
-    setState(() {
-      _simulateCairo = false;
-      _lastFetchedLat = null;
-      _lastFetchedLng = null;
-      _lastFetchedQuery = '';
-    });
-    _checkLocationAndStart();
   }
 
   Future<void> _applyFilters({bool force = false}) async {
@@ -233,29 +185,22 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
     double? lat;
     double? lng;
 
-    if (_simulateCairo) {
-      lat = 30.0444;
-      lng = 31.2357;
-    } else if (_userPosition != null) {
+    if (_isUsingGPS && _userPosition != null) {
       lat = _userPosition!.latitude;
       lng = _userPosition!.longitude;
     }
 
-    if (lat == null || lng == null) {
-      setState(() {
-        _filtered = [];
-      });
-      return;
-    }
-
     final bool locationChanged = _lastFetchedLat == null ||
         _lastFetchedLng == null ||
-        Geolocator.distanceBetween(
-          _lastFetchedLat!,
-          _lastFetchedLng!,
-          lat,
-          lng,
-        ) >= 15.0;
+        (lat != null &&
+            _lastFetchedLat != null &&
+            _lastFetchedLng != null &&
+            Geolocator.distanceBetween(
+              _lastFetchedLat!,
+              _lastFetchedLng!,
+              lat,
+              lng!,
+            ) >= 50.0);
 
     final bool queryChanged = _lastFetchedQuery != q;
 
@@ -284,10 +229,20 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
     try {
       Map<String, dynamic> result;
 
-      if (q.isNotEmpty) {
-        result = await ApiService.searchPharmacies(q, lat: lat, lng: lng);
+      if (lat == null || lng == null) {
+        // Fallback/Database mode
+        if (q.isNotEmpty) {
+          result = await ApiService.searchPharmacies(q);
+        } else {
+          result = await ApiService.getFallbackPharmacies();
+        }
       } else {
-        result = await ApiService.getNearbyPharmacies(lat, lng, radius: _searchRadius);
+        // GPS mode
+        if (q.isNotEmpty) {
+          result = await ApiService.searchPharmacies(q, lat: lat, lng: lng);
+        } else {
+          result = await ApiService.getNearbyPharmacies(lat, lng, radius: _searchRadius);
+        }
       }
 
       if (!mounted) return;
@@ -325,12 +280,17 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
               p = Pharmacy.fromJson(json);
             }
 
-            final double computedDistance = Geolocator.distanceBetween(
-              lat!,
-              lng!,
-              p.lat,
-              p.lng,
-            ) / 1000.0;
+            double? computedDistance;
+            if (lat != null && lng != null) {
+              computedDistance = Geolocator.distanceBetween(
+                lat,
+                lng,
+                p.lat,
+                p.lng,
+              ) / 1000.0;
+            } else {
+              computedDistance = p.distance;
+            }
 
             final Pharmacy updatedP = Pharmacy(
               id: p.id,
@@ -348,23 +308,29 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
               price: p.price,
             );
 
-            if (computedDistance <= _searchRadius) {
-              if (!seenIds.contains(updatedP.id)) {
-                seenIds.add(updatedP.id);
-                uniquePharmacies.add(updatedP);
-              } else {
-                final existing = uniquePharmacies.firstWhere((element) => element.id == updatedP.id);
-                if (updatedP.availableMedicines.isNotEmpty) {
-                  for (var med in updatedP.availableMedicines) {
-                    if (!existing.availableMedicines.contains(med)) {
-                      existing.availableMedicines.add(med);
-                    }
+            // Limit results to search radius if GPS is available
+            if (lat != null && computedDistance != null && computedDistance > _searchRadius) {
+              continue;
+            }
+
+            if (!seenIds.contains(updatedP.id)) {
+              seenIds.add(updatedP.id);
+              uniquePharmacies.add(updatedP);
+            } else {
+              final existing = uniquePharmacies.firstWhere((element) => element.id == updatedP.id);
+              if (updatedP.availableMedicines.isNotEmpty) {
+                for (var med in updatedP.availableMedicines) {
+                  if (!existing.availableMedicines.contains(med)) {
+                    existing.availableMedicines.add(med);
                   }
                 }
               }
             }
           }
           _allPharmacies = uniquePharmacies;
+          
+          // Cache loaded pharmacies statically so they persist across screen transitions
+          _cachedPharmacies = List<Pharmacy>.from(_allPharmacies);
 
           _filtered = _allPharmacies.where((p) {
             final matchOpen = !_onlyOpen || p.isOpen;
@@ -385,168 +351,26 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
         if (mounted) {
           setState(() {
             _isLoading = false;
-            if (_filtered.isEmpty) {
+            // Prevent replacing loaded list with empty error view
+            if (_allPharmacies.isEmpty) {
               _errorMessage = errorMsg;
-            } else {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(errorMsg)),
-              );
             }
           });
         }
       }
     } catch (e) {
       debugPrint("Error loading pharmacies: $e");
-      final errorMsg = "Network or server error: $e";
+      const errorMsg = "Network or server error. Please check your connection.";
       if (mounted) {
         setState(() {
           _isLoading = false;
-          if (_filtered.isEmpty) {
+          // Prevent replacing loaded list with empty error view
+          if (_allPharmacies.isEmpty) {
             _errorMessage = errorMsg;
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(errorMsg)),
-            );
           }
         });
       }
     }
-  }
-
-  Widget _buildPermissionDeniedView() {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    Icons.location_off_rounded,
-                    size: 64,
-                    color: Colors.red.shade400,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'Location Access Required',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey.shade800,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'To find nearby pharmacies in real-time, MediScan needs access to your device\'s location. Please grant permission or enable location services.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
-                    color: Colors.grey.shade600,
-                    height: 1.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton.icon(
-                  onPressed: _checkLocationAndStart,
-                  icon: const Icon(Icons.gps_fixed),
-                  label: const Text('Grant Location Access'),
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton.icon(
-                  onPressed: () => Geolocator.openAppSettings(),
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Open App Settings'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(double.infinity, 50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Divider(),
-                const SizedBox(height: 12),
-                Text(
-                  'Testing or running on emulator?',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
-                    color: Colors.grey.shade500,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: _enableCairoSimulation,
-                  icon: const Icon(Icons.developer_mode),
-                  label: const Text('Simulate Cairo Location (Egypt demo)'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.teal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAcquiringLocationView() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const CircularProgressIndicator(color: Colors.teal),
-          const SizedBox(height: 20),
-          Text(
-            'Acquiring GPS location...',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.grey.shade700,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32),
-            child: Text(
-              'Make sure location services are enabled on your device.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 13,
-                color: Colors.grey.shade500,
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          TextButton.icon(
-            onPressed: _enableCairoSimulation,
-            icon: const Icon(Icons.developer_mode, size: 16),
-            label: const Text('Simulate Cairo Location (Egypt demo)'),
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.teal,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildSearchListView() {
@@ -578,7 +402,7 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
           ),
         ),
 
-        // Filter Options & Simulation Badge
+        // Filter Options
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: Row(
@@ -609,32 +433,6 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
                   ),
                 ],
               ),
-              if (_simulateCairo)
-                GestureDetector(
-                  onTap: _disableCairoSimulation,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.shade50,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.teal.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.gps_fixed, color: Colors.teal.shade700, size: 12),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Simulated Cairo',
-                          style: GoogleFonts.outfit(
-                            color: Colors.teal.shade700,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
             ],
           ),
         ),
@@ -661,7 +459,7 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
                             ),
                             const SizedBox(height: 16),
                             ElevatedButton(
-                              onPressed: _checkLocationAndStart,
+                              onPressed: () => _applyFilters(force: true),
                               child: const Text('Try Again'),
                             ),
                           ],
@@ -678,7 +476,7 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
                                 Icon(Icons.search_off_rounded, size: 64, color: Colors.grey.shade400),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'No pharmacies found nearby',
+                                  'No pharmacies found',
                                   style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     fontWeight: FontWeight.bold,
@@ -720,12 +518,6 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasPermission = _simulateCairo ||
-        (_permissionStatus == LocationPermission.whileInUse ||
-            _permissionStatus == LocationPermission.always);
-
-    final bool acquiringLocation = !_simulateCairo && _userPosition == null && _errorMessage.isEmpty;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Find Pharmacies'),
@@ -746,15 +538,11 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.my_location),
-            onPressed: _loadingLocation ? null : _checkLocationAndStart,
+            onPressed: _loadingLocation ? null : _requestLocationAndQuery,
           ),
         ],
       ),
-      body: !hasPermission
-          ? _buildPermissionDeniedView()
-          : acquiringLocation
-              ? _buildAcquiringLocationView()
-              : _buildSearchListView(),
+      body: _buildSearchListView(),
     );
   }
 }

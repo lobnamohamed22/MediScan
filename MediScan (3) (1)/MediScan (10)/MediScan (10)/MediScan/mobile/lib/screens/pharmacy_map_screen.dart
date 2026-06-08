@@ -20,7 +20,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   final MapController _mapController = MapController();
   List<Pharmacy> _pharmacies = [];
   bool _isLoading = true;
-  LatLng _currentLocation = const LatLng(30.0444, 31.2357); // Cairo default
+  LatLng _currentLocation = const LatLng(29.8514, 31.3428); // Helwan University default
 
   StreamSubscription<Position>? _positionStream;
 
@@ -80,7 +80,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
       } else {
         if (!mounted) return;
         setState(() {
-          _currentLocation = const LatLng(30.0444, 31.2357);
+          _currentLocation = const LatLng(29.8514, 31.3428);
         });
         _mapController.move(_currentLocation, 14);
         _fetchPharmacies();
@@ -89,7 +89,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
       debugPrint("Location error: $e");
       if (!mounted) return;
       setState(() {
-        _currentLocation = const LatLng(30.0444, 31.2357);
+        _currentLocation = const LatLng(29.8514, 31.3428);
       });
       _mapController.move(_currentLocation, 14);
       _fetchPharmacies();
@@ -103,7 +103,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
       final res = await ApiService.getNearbyPharmacies(
         _currentLocation.latitude,
         _currentLocation.longitude,
-        radius: 5.0, // Enforce strict 5 km radius limit
+        radius: 10.0, // Enforce strict 10 km radius limit
         medicine: widget.medicineName,
       );
 
@@ -162,8 +162,8 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
             price: p.price,
           );
 
-          // Apply strict 5 km radius filter
-          if (computedDistance <= 5.0) {
+          // Apply strict 10 km radius filter
+          if (computedDistance <= 10.0) {
             if (!seenIds.contains(updatedP.id)) {
               seenIds.add(updatedP.id);
               uniquePharmacies.add(updatedP);
@@ -195,19 +195,50 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
       } else {
         if (!mounted) return;
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message'] ?? 'Failed to load pharmacies')),
-        );
+        if (_pharmacies.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(res['message'] ?? 'Failed to load pharmacies')),
+          );
+        }
       }
     } catch (e) {
       debugPrint("Error fetching pharmacies: $e");
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Network or server error: $e')),
-        );
+        if (_pharmacies.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Network or server error: $e')),
+          );
+        }
       }
     }
+  }
+
+  Future<void> _refreshLocationAndPharmacies() async {
+    setState(() => _isLoading = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 5),
+        );
+        if (mounted) {
+          setState(() {
+            _currentLocation = LatLng(pos.latitude, pos.longitude);
+          });
+          _mapController.move(_currentLocation, 14.0);
+        }
+      }
+    } catch (e) {
+      debugPrint("Error getting current position: $e");
+    }
+    await _fetchPharmacies();
   }
 
   void _showPharmacyDetails(Pharmacy p) {
@@ -327,7 +358,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _fetchPharmacies,
+        onPressed: _refreshLocationAndPharmacies,
         child: const Icon(Icons.refresh),
       ),
     );
