@@ -38,7 +38,86 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchPrices();
+    if ((widget.status == 'preview' || widget.status == 'pending') && _resolvedPharmacyId != null) {
+      _fetchPharmacyInventory();
+    } else {
+      _fetchPrices();
+    }
+  }
+
+  Future<void> _fetchPharmacyInventory() async {
+    setState(() => _isLoadingPrices = true);
+    try {
+      final res = await ApiService.getPharmacyInventoryById(_resolvedPharmacyId!);
+      if (res['success'] == true) {
+        final List data = res['data'] ?? [];
+        setState(() {
+          _resolvedMedicines = data.map<Map<String, dynamic>>((item) {
+            final String medName = item['medicine_name'] ?? '';
+            int qty = 0;
+            bool isInPassed = false;
+            for (var m in widget.medicines) {
+              String name = m;
+              int mq = 1;
+              if (m.contains(" x") && RegExp(r' x\d+$').hasMatch(m)) {
+                final parts = m.split(RegExp(r' x(?=\d+$)'));
+                if (parts.length == 2) {
+                  name = parts[0];
+                  mq = int.tryParse(parts[1]) ?? 1;
+                }
+              }
+              if (name.toLowerCase().trim() == medName.toLowerCase().trim()) {
+                qty = mq;
+                isInPassed = true;
+                break;
+              }
+            }
+
+            return {
+              'original_name': medName,
+              'name': medName,
+              'medicine_image': item['medicine_image'] ?? '',
+              'quantity': isInPassed ? qty : 0,
+              'price': double.tryParse(item['price']?.toString() ?? '0.0') ?? 0.0,
+              'matched': true,
+              'available': (item['stock_quantity'] ?? 0) > 0,
+              'stock': item['stock_quantity'] ?? 0,
+            };
+          }).toList();
+
+          if (_resolvedMedicines.isEmpty) {
+            _fallbackToDefaults();
+          } else {
+            // Sort so that pre-selected medicines (quantity > 0) are at the top
+            _resolvedMedicines.sort((a, b) {
+              final int qa = a['quantity'] ?? 0;
+              final int qb = b['quantity'] ?? 0;
+              if (qa > 0 && qb == 0) return -1;
+              if (qa == 0 && qb > 0) return 1;
+              final String na = a['name'] ?? '';
+              final String nb = b['name'] ?? '';
+              return na.compareTo(nb);
+            });
+
+            // Recalculate total price
+            double newTotal = 0.0;
+            for (var m in _resolvedMedicines) {
+              final price = m['price'] ?? 0.0;
+              final q = m['quantity'] ?? 0;
+              if (m['available'] == true) {
+                newTotal += price * q;
+              }
+            }
+            _calculatedTotal = newTotal;
+            _isLoadingPrices = false;
+          }
+        });
+      } else {
+        _fallbackToDefaults();
+      }
+    } catch (e) {
+      _fallbackToDefaults();
+    }
   }
 
   Future<void> _fetchPrices() async {
@@ -103,7 +182,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       double newTotal = 0.0;
       for (var m in _resolvedMedicines) {
         final price = double.tryParse(m['price']?.toString() ?? '0.0') ?? 0.0;
-        final qty = m['quantity'] ?? 1;
+        final qty = m['quantity'] ?? 0;
         final available = m['available'] ?? false;
         if (available) {
           newTotal += price * qty;
@@ -116,11 +195,21 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
   Future<void> _addToCart() async {
     setState(() => _isAddingToCart = true);
     
-    final List<String> serializeMedicines = _resolvedMedicines.map((m) {
+    final List<String> serializeMedicines = _resolvedMedicines
+        .where((m) => (m['quantity'] ?? 0) > 0)
+        .map((m) {
       final name = m['name'] ?? '';
       final qty = m['quantity'] ?? 1;
       return '$name x$qty';
     }).toList();
+
+    if (serializeMedicines.isEmpty) {
+      setState(() => _isAddingToCart = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select at least one medicine to reserve.')),
+      );
+      return;
+    }
 
     final result = await CartService().bulkAddByNames(serializeMedicines, pharmacyId: _resolvedPharmacyId);
     
@@ -169,37 +258,68 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            /// Order Info Card
-            Card(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    _row('Order ID', widget.orderId),
-                    _row('Pharmacy', widget.pharmacy),
-                    _row('Date', widget.date),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('Status'),
-                        Chip(
-                          label: Text(widget.status.toUpperCase()),
-                          backgroundColor:
-                              _statusColor(widget.status).withValues(alpha: 0.15),
-                          labelStyle: TextStyle(
-                            color: _statusColor(widget.status),
-                            fontWeight: FontWeight.w600,
-                          ),
-                        )
-                      ],
-                    ),
-                  ],
+            if (widget.status == 'preview' || widget.status == 'pending')
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Reserving from ${widget.pharmacy}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.teal,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Pickup Date:', style: TextStyle(color: Colors.grey)),
+                          Text(widget.date, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              /// Order Info Card (Only show for actual placed/completed orders)
+              Card(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      _row('Order ID', widget.orderId),
+                      _row('Pharmacy', widget.pharmacy),
+                      _row('Date', widget.date),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Status'),
+                          Chip(
+                            label: Text(widget.status.toUpperCase()),
+                            backgroundColor:
+                                _statusColor(widget.status).withValues(alpha: 0.15),
+                            labelStyle: TextStyle(
+                              color: _statusColor(widget.status),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          )
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
 
             const SizedBox(height: 16),
 
@@ -233,9 +353,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                         final m = _resolvedMedicines[index];
                         final originalName = m['original_name'] ?? m['name'] ?? '';
                         final name = m['name'] ?? '';
-                        final qty = m['quantity'] ?? 1;
+                        final qty = m['quantity'] ?? 0;
                         final price = double.tryParse(m['price']?.toString() ?? '0.0') ?? 0.0;
                         final matched = m['matched'] ?? false;
+                        final isSelected = qty > 0;
 
                         String displayTitle = originalName.trim();
                         if (displayTitle.contains(" x") && RegExp(r' x\d+$').hasMatch(displayTitle)) {
@@ -244,88 +365,93 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
 
                         final isDifferentMatch = matched && name.toLowerCase().trim() != displayTitle.toLowerCase().trim();
 
-                        return ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          leading: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Container(
-                              width: 48,
-                              height: 48,
-                              color: Colors.grey[200],
-                              child: m['medicine_image'] != null &&
-                                      m['medicine_image'].toString().isNotEmpty
-                                  ? Image.network(
-                                      m['medicine_image'].toString(),
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (context, error, stackTrace) =>
-                                          const Icon(
-                                            Icons.medication,
-                                            color: Colors.blueGrey,
-                                          ),
-                                    )
-                                  : const Icon(
-                                      Icons.medication,
-                                      color: Colors.blueGrey,
-                                    ),
-                            ),
-                          ),
-                          title: Text(
-                            displayTitle,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 4),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 4,
-                                crossAxisAlignment: WrapCrossAlignment.center,
-                                children: [
-                                  if (widget.status == 'preview' || widget.status == 'pending') ...[
-                                    IconButton(
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.remove_circle_outline, size: 20, color: Colors.red),
-                                      onPressed: () {
-                                        if (qty > 1) {
-                                          _updateQuantity(index, qty - 1);
-                                        }
-                                      },
-                                    ),
-                                    Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                    IconButton(
-                                      constraints: const BoxConstraints(),
-                                      padding: EdgeInsets.zero,
-                                      icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.green),
-                                      onPressed: () {
-                                        _updateQuantity(index, qty + 1);
-                                      },
-                                    ),
-                                  ] else ...[
-                                    Text('Qty: $qty', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  ],
-                                ],
+                        return Opacity(
+                          opacity: isSelected ? 1.0 : 0.5,
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                color: Colors.grey[200],
+                                child: m['medicine_image'] != null &&
+                                        m['medicine_image'].toString().isNotEmpty
+                                    ? Image.network(
+                                        m['medicine_image'].toString(),
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.medication,
+                                              color: Colors.blueGrey,
+                                            ),
+                                      )
+                                    : const Icon(
+                                        Icons.medication,
+                                        color: Colors.blueGrey,
+                                      ),
                               ),
-                              if (isDifferentMatch)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 6),
-                                  child: Text(
-                                    'System Match: $name',
-                                    style: const TextStyle(
-                                      color: Colors.green,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                            ),
+                            title: Text(
+                              displayTitle,
+                              style: TextStyle(
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 4),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    if (widget.status == 'preview' || widget.status == 'pending') ...[
+                                      IconButton(
+                                        constraints: const BoxConstraints(),
+                                        padding: EdgeInsets.zero,
+                                        icon: Icon(
+                                          qty > 1 ? Icons.remove_circle_outline : Icons.delete_outline,
+                                          size: 20,
+                                          color: isSelected ? Colors.red : Colors.grey,
+                                        ),
+                                        onPressed: isSelected
+                                            ? () => _updateQuantity(index, qty - 1)
+                                            : null,
+                                      ),
+                                      Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                      IconButton(
+                                        constraints: const BoxConstraints(),
+                                        padding: EdgeInsets.zero,
+                                        icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.green),
+                                        onPressed: () {
+                                          _updateQuantity(index, qty + 1);
+                                        },
+                                      ),
+                                    ] else ...[
+                                      Text('Qty: $qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ],
+                                ),
+                                if (isDifferentMatch)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(
+                                      'System Match: $name',
+                                      style: const TextStyle(
+                                        color: Colors.green,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
                                   ),
-                                ),
-                            ],
-                          ),
-                          trailing: Text(
-                            '${(price * qty).toStringAsFixed(2)} EGP',
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              ],
+                            ),
+                            trailing: Text(
+                              '${(price * qty).toStringAsFixed(2)} EGP',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
                           ),
                         );
                       }),

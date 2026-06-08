@@ -15,6 +15,8 @@ class User(db.Model):
     role = db.Column(db.Enum('patient', 'pharmacist', 'pharmacy_owner', 'delivery', 'doctor', 'admin', 'family_member', 'regulator'), default='patient')
     is_verified = db.Column(db.Boolean, default=False)
     otp_secret = db.Column(db.String(255))
+    reward_points = db.Column(db.Integer, default=0)
+    wallet_balance = db.Column(db.Numeric(10, 2), default=0.0)
     
     def to_dict(self):
         return {
@@ -25,5 +27,7 @@ class User(db.Model):
             'role': self.role,
             'gender': self.gender,
             'is_verified': self.is_verified,
+            'reward_points': self.reward_points if self.reward_points is not None else 0,
+            'wallet_balance': float(self.wallet_balance) if self.wallet_balance else 0.0,
             'date_of_birth': self.date_of_birth.isoformat() if self.date_of_birth else None
         }

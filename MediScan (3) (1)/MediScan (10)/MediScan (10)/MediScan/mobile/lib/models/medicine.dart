@@ -1,3 +1,5 @@
+import '../config.dart';
+
 class Medicine {
   final String id;
   final String name;
@@ -51,6 +53,11 @@ class Medicine {
       return [];
     }
 
+    String imgUrl = json['medicine_image'] ?? json['imageUrl'] ?? '';
+    if (imgUrl.startsWith('/')) {
+      imgUrl = '${Config.baseUrl}$imgUrl';
+    }
+
     return Medicine(
       id: json['id']?.toString() ?? '',
       name: json['medicine_name'] ?? json['name'] ?? '',
@@ -69,7 +76,7 @@ class Medicine {
       alternatives: parseList(json['alternatives']),
       manufacturer: json['manufacturer'] ?? '',
       barcode: json['barcode'] ?? '',
-      imageUrl: json['medicine_image'] ?? json['imageUrl'] ?? '',
+      imageUrl: imgUrl,
     );
   }
 

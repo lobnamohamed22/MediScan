@@ -17,7 +17,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _isLoading = false;
-  String _selectedUserType = 'Patient';
   bool _agreeToTerms = false;
 
   Future<void> _signup() async {
@@ -34,9 +33,7 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() => _isLoading = true);
 
       final authService = AuthService();
-      String roleParam = 'patient';
-      if (_selectedUserType == 'Pharmacist') roleParam = 'pharmacist';
-      if (_selectedUserType == 'Delivery Driver') roleParam = 'delivery';
+      const roleParam = 'patient';
       
       final result = await authService.register(
         _nameController.text.trim(),
@@ -118,43 +115,6 @@ class _SignupScreenState extends State<SignupScreen> {
                 key: _formKey,
                 child: Column(
                   children: [
-                    Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[300]!),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedUserType,
-                          isExpanded: true,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          icon: const Icon(Icons.arrow_drop_down),
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'Patient',
-                              child: Text('Patient'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Pharmacist',
-                              child: Text('Pharmacist'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'Delivery Driver',
-                              child: Text('Delivery Driver'),
-                            ),
-                          ],
-                          onChanged: (value) {
-                            setState(() => _selectedUserType = value!);
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
                     TextFormField(
                       controller: _nameController,
                       decoration: InputDecoration(

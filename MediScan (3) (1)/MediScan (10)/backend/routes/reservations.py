@@ -30,6 +30,23 @@ def create_reservation():
         )
         
         db.session.add(reservation)
+        
+        # Award 10 loyalty points for reserving medicine
+        from models.user import User
+        from models.wallet import WalletTransaction
+        user = User.query.filter_by(user_id=user_id).first()
+        if user:
+            user.reward_points = (user.reward_points or 0) + 10
+            user.wallet_balance = (user.reward_points) * 0.1
+            tx = WalletTransaction(
+                user_id=user_id,
+                transaction_type='earn',
+                points=10,
+                amount=1.0,
+                description=f"Points earned for reservation"
+            )
+            db.session.add(tx)
+            
         db.session.commit()
         
         return jsonify({

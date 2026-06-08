@@ -161,6 +161,9 @@ def remove_cart_item(item_id):
 def checkout():
     try:
         user_id = get_jwt_identity()
+        data = request.get_json() or {}
+        redeem_points = int(data.get('redeem_points', 0))
+        
         cart = Cart.query.filter_by(user_id=user_id).first()
         
         if not cart or not cart.items:
@@ -186,10 +189,45 @@ def checkout():
         result = db.session.execute(query, params).fetchone()
         
         total_qty = int(result[0] or 0)
-        total_price = float(result[1] or 0.0)
+        subtotal = float(result[1] or 0.0)
         
         if total_qty == 0:
             return jsonify({'success': False, 'message': 'Cart has no valid items'}), 400
+            
+        discount = 0.0
+        points_to_use = 0
+        from models.user import User
+        from models.wallet import WalletTransaction
+        user = User.query.filter_by(user_id=user_id).first()
+        
+        if redeem_points > 0:
+            if not user:
+                return jsonify({'success': False, 'message': 'User not found'}), 404
+            user_pts = user.reward_points if user.reward_points is not None else 0
+            if user_pts < redeem_points:
+                return jsonify({'success': False, 'message': f'Insufficient points. Available: {user_pts}'}), 400
+            
+            points_value = redeem_points * 0.1
+            if points_value > subtotal:
+                discount = subtotal
+                points_to_use = int(subtotal * 10)
+            else:
+                discount = points_value
+                points_to_use = redeem_points
+                
+            user.reward_points = (user.reward_points or 0) - points_to_use
+            user.wallet_balance = (user.reward_points) * 0.1
+            
+            tx_redeem = WalletTransaction(
+                user_id=user_id,
+                transaction_type='redeem',
+                points=-points_to_use,
+                amount=discount,
+                description=f"Points redeemed for discount on checkout"
+            )
+            db.session.add(tx_redeem)
+            
+        final_price = subtotal - discount
             
         pharmacy = None
         if cart.pharmacy_id:
@@ -210,7 +248,8 @@ def checkout():
             user_id=user_id,
             pharmacy_id=pharmacy.pharmacy_id,
             quantity=total_qty,
-            total_price=total_price,
+            total_price=final_price,
+            discount=discount,
             status='assigned',
             payment_status='pending',
             medicines=order_medicines
@@ -218,6 +257,19 @@ def checkout():
         
         db.session.add(new_order)
         
+        points_earned = int(final_price / 10)
+        if points_earned > 0 and user:
+            user.reward_points = (user.reward_points or 0) + points_earned
+            user.wallet_balance = (user.reward_points) * 0.1
+            tx_earn = WalletTransaction(
+                user_id=user_id,
+                transaction_type='earn',
+                points=points_earned,
+                amount=points_earned * 0.1,
+                description=f"Points earned for order"
+            )
+            db.session.add(tx_earn)
+            
         for item in cart.items:
             db.session.delete(item)
             
@@ -227,10 +279,76 @@ def checkout():
             'success': True,
             'message': 'Order created successfully from cart',
             'order_id': new_order.order_id,
-            'pharmacy_name': pharmacy.name
+            'pharmacy_name': pharmacy.name,
+            'discount': discount,
+            'points_used': points_to_use,
+            'points_earned': points_earned
         }), 201
     except Exception as e:
         db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@cart_bp.route('/checkout/preview', methods=['POST'])
+@jwt_required()
+def checkout_preview():
+    try:
+        user_id = get_jwt_identity()
+        data = request.get_json() or {}
+        redeem_points = int(data.get('redeem_points', 0))
+        
+        cart = Cart.query.filter_by(user_id=user_id).first()
+        if not cart or not cart.items:
+            return jsonify({'success': False, 'message': 'Cart is empty'}), 400
+            
+        if cart.pharmacy_id:
+            query = text("""
+                SELECT SUM(ci.quantity) AS total_qty,
+                       SUM(ci.quantity * COALESCE((SELECT i.price FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id AND i.pharmacy_id = :pharmacy_id), 0)) AS total_price
+                FROM cart_items ci
+                WHERE ci.cart_id = :cart_id
+            """)
+            params = {'cart_id': cart.cart_id, 'pharmacy_id': cart.pharmacy_id}
+        else:
+            query = text("""
+                SELECT SUM(ci.quantity) AS total_qty,
+                       SUM(ci.quantity * COALESCE((SELECT AVG(i.price) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id), 0)) AS total_price
+                FROM cart_items ci
+                WHERE ci.cart_id = :cart_id
+            """)
+            params = {'cart_id': cart.cart_id}
+            
+        result = db.session.execute(query, params).fetchone()
+        subtotal = float(result[1] or 0.0)
+        
+        from models.user import User
+        user = User.query.filter_by(user_id=user_id).first()
+        user_pts = user.reward_points if (user and user.reward_points is not None) else 0
+        
+        if redeem_points > user_pts:
+            redeem_points = user_pts
+            
+        points_value = redeem_points * 0.1
+        if points_value > subtotal:
+            discount = subtotal
+            points_to_use = int(subtotal * 10)
+        else:
+            discount = points_value
+            points_to_use = redeem_points
+            
+        final_price = subtotal - discount
+        points_balance_after = user_pts - points_to_use
+        
+        return jsonify({
+            'success': True,
+            'data': {
+                'subtotal': subtotal,
+                'discount': discount,
+                'final_price': final_price,
+                'points_to_redeem': points_to_use,
+                'points_balance_after': points_balance_after
+            }
+        }), 200
+    except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 @cart_bp.route('/bulk_add_by_name', methods=['POST'])

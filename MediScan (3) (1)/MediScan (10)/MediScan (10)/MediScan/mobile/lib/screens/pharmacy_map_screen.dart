@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
+import 'dart:async';
 import '../services/api_service.dart';
 import '../models/pharmacy.dart';
 import 'order_details_screen.dart';
@@ -21,10 +22,38 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   bool _isLoading = true;
   LatLng _currentLocation = const LatLng(30.0444, 31.2357); // Cairo default
 
+  StreamSubscription<Position>? _positionStream;
+
   @override
   void initState() {
     super.initState();
     _initLocation();
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
+  }
+
+  void _startListeningLocation() {
+    _positionStream?.cancel();
+    const settings = LocationSettings(
+      accuracy: LocationAccuracy.high,
+      distanceFilter: 15, // Update when user moves 15 meters
+    );
+
+    _positionStream = Geolocator.getPositionStream(locationSettings: settings)
+        .listen((Position position) {
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+      });
+      _mapController.move(_currentLocation, 14);
+      _fetchPharmacies();
+    }, onError: (err) {
+      debugPrint("Location stream error on map: $err");
+    });
   }
 
   Future<void> _initLocation() async {
@@ -34,53 +63,150 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
         permission = await Geolocator.requestPermission();
       }
 
-      LatLng userLoc = const LatLng(30.0444, 31.2357);
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
-        final pos = await Geolocator.getCurrentPosition();
-        userLoc = LatLng(pos.latitude, pos.longitude);
-        
-        // If coordinate is outside Egypt boundaries, default to Cairo so they can view the pharmacies
-        if (userLoc.latitude < 22.0 || userLoc.latitude > 32.0 || userLoc.longitude < 25.0 || userLoc.longitude > 37.0) {
-          userLoc = const LatLng(30.0444, 31.2357);
-        }
+        _startListeningLocation();
+
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 6),
+        );
+        if (!mounted) return;
+        setState(() {
+          _currentLocation = LatLng(pos.latitude, pos.longitude);
+        });
+        _mapController.move(_currentLocation, 14);
+        _fetchPharmacies();
+      } else {
+        if (!mounted) return;
+        setState(() {
+          _currentLocation = const LatLng(30.0444, 31.2357);
+        });
+        _mapController.move(_currentLocation, 14);
+        _fetchPharmacies();
       }
-      setState(() {
-        _currentLocation = userLoc;
-      });
-      _mapController.move(_currentLocation, 14);
     } catch (e) {
       debugPrint("Location error: $e");
+      if (!mounted) return;
       setState(() {
         _currentLocation = const LatLng(30.0444, 31.2357);
       });
       _mapController.move(_currentLocation, 14);
-    } finally {
       _fetchPharmacies();
     }
   }
 
   Future<void> _fetchPharmacies() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
-    final res = await ApiService.getNearbyPharmacies(
-      _currentLocation.latitude,
-      _currentLocation.longitude,
-      medicine: widget.medicineName,
-    );
+    try {
+      final res = await ApiService.getNearbyPharmacies(
+        _currentLocation.latitude,
+        _currentLocation.longitude,
+        radius: 5.0, // Enforce strict 5 km radius limit
+        medicine: widget.medicineName,
+      );
 
-    if (res['success'] == true) {
-      final List data = res['data'] ?? [];
-      setState(() {
-        _pharmacies = data.map((j) => Pharmacy.fromJson(j)).where((p) {
-          return p.lat >= 22.0 &&
-              p.lat <= 32.0 &&
-              p.lng >= 25.0 &&
-              p.lng <= 37.0;
-        }).toList();
-        _isLoading = false;
-      });
-    } else {
-      setState(() => _isLoading = false);
+      if (!mounted) return;
+
+      if (res['success'] == true) {
+        final List data = res['data'] ?? [];
+        final Set<String> seenIds = {};
+        final List<Pharmacy> uniquePharmacies = [];
+
+        for (var json in data) {
+          Pharmacy p;
+          if (json.containsKey('pharmacy')) {
+            final parsedP = Pharmacy.fromJson(json['pharmacy']);
+            p = Pharmacy(
+              id: parsedP.id,
+              name: parsedP.name,
+              address: parsedP.address,
+              phone: parsedP.phone,
+              rating: parsedP.rating,
+              isOpen: parsedP.isOpen,
+              hasDelivery: parsedP.hasDelivery,
+              lat: parsedP.lat,
+              lng: parsedP.lng,
+              workingHours: parsedP.workingHours,
+              availableMedicines: [json['medicine']['name'].toString()],
+              distance: json['distance'] != null
+                  ? double.tryParse(json['distance'].toString())
+                  : null,
+            );
+          } else {
+            p = Pharmacy.fromJson(json);
+          }
+
+          // Compute distance client-side using geolocator for precise real-time values
+          final double computedDistance = Geolocator.distanceBetween(
+            _currentLocation.latitude,
+            _currentLocation.longitude,
+            p.lat,
+            p.lng,
+          ) / 1000.0;
+
+          final Pharmacy updatedP = Pharmacy(
+            id: p.id,
+            name: p.name,
+            address: p.address,
+            phone: p.phone,
+            rating: p.rating,
+            isOpen: p.isOpen,
+            hasDelivery: p.hasDelivery,
+            lat: p.lat,
+            lng: p.lng,
+            workingHours: p.workingHours,
+            availableMedicines: List<String>.from(p.availableMedicines),
+            distance: computedDistance,
+            price: p.price,
+          );
+
+          // Apply strict 5 km radius filter
+          if (computedDistance <= 5.0) {
+            if (!seenIds.contains(updatedP.id)) {
+              seenIds.add(updatedP.id);
+              uniquePharmacies.add(updatedP);
+            } else {
+              final existing = uniquePharmacies.firstWhere((element) => element.id == updatedP.id);
+              if (updatedP.availableMedicines.isNotEmpty) {
+                for (var med in updatedP.availableMedicines) {
+                  if (!existing.availableMedicines.contains(med)) {
+                    existing.availableMedicines.add(med);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Sort by distance (nearest first)
+        uniquePharmacies.sort((a, b) {
+          if (a.distance == null) return 1;
+          if (b.distance == null) return -1;
+          return a.distance!.compareTo(b.distance!);
+        });
+
+        if (!mounted) return;
+        setState(() {
+          _pharmacies = uniquePharmacies;
+          _isLoading = false;
+        });
+      } else {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(res['message'] ?? 'Failed to load pharmacies')),
+        );
+      }
+    } catch (e) {
+      debugPrint("Error fetching pharmacies: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Network or server error: $e')),
+        );
+      }
     }
   }
 
@@ -165,14 +291,8 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
             options: MapOptions(
               initialCenter: _currentLocation,
               initialZoom: 12.0,
-              minZoom: 6.0,
+              minZoom: 2.0,
               maxZoom: 18.0,
-              cameraConstraint: CameraConstraint.contain(
-                bounds: LatLngBounds(
-                  const LatLng(22.0, 25.0),
-                  const LatLng(31.5, 37.0),
-                ),
-              ),
             ),
             children: [
               TileLayer(

@@ -30,6 +30,7 @@ import 'screens/profile_screen.dart';
 import 'screens/edit_profile_screen.dart';
 import 'screens/personal_info_screen.dart';
 import 'screens/family_members_screen.dart';
+import 'screens/wallet_screen.dart';
 
 import 'screens/chatbot_screen.dart';
 import 'screens/notifications_screen.dart';
@@ -279,6 +280,7 @@ class _MediScanAppState extends State<MediScanApp> {
         '/edit-profile': (context) => const EditProfileScreen(),
         '/personal-info': (context) => const PersonalInfoScreen(),
         '/family-members': (context) => const FamilyMembersScreen(),
+        '/wallet': (context) => const WalletScreen(),
         '/chatbot': (context) => const ChatbotScreen(),
         '/notifications': (context) => const NotificationsScreen(),
         '/settings': (context) => const SettingsScreen(),

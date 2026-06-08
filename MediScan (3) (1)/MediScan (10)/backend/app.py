@@ -79,6 +79,10 @@ def create_app():
     from routes.cart import cart_bp
     app.register_blueprint(cart_bp, url_prefix='/api/cart')
     
+    # Wallet APIs
+    from routes.wallet import wallet_bp
+    app.register_blueprint(wallet_bp, url_prefix='/api/wallet')
+    
     # Admin APIs
     from routes.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -176,6 +180,16 @@ def create_app():
         try:
             db.create_all()
             from sqlalchemy import text
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN reward_points INT DEFAULT 0"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+            try:
+                db.session.execute(text("ALTER TABLE users ADD COLUMN wallet_balance DECIMAL(10,2) DEFAULT 0.00"))
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
             try:
                 db.session.execute(text("ALTER TABLE medicine_info ADD COLUMN status VARCHAR(50) DEFAULT 'Verified'"))
                 db.session.commit()

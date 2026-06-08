@@ -202,6 +202,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         },
                       ),
                       _buildSettingsItem(
+                        icon: Icons.account_balance_wallet_outlined,
+                        title: 'Wallet & Rewards',
+                        onTap: () => Navigator.pushNamed(context, '/wallet'),
+                      ),
+                      _buildSettingsItem(
                         icon: Icons.notifications,
                         title: 'Notifications',
                         onTap: () =>

@@ -312,20 +312,34 @@ def simulate_delivery(order_id):
             db.session.commit()
             
         driver = User.query.filter_by(email='driver_sim@mediscan.com').first()
+        import random
+        driver_names = ['Ahmed Ali', 'Mohamed Hassan', 'Omar Khaled', 'Mostafa Ibrahim', 'Youssef Mahmoud']
         if not driver:
             driver = User(
                 email='driver_sim@mediscan.com',
                 phone='01099999999',
                 password_hash=generate_password_hash('password123'),
-                full_name='Speedy Delivery (Sim)',
+                full_name=random.choice(driver_names),
                 role='delivery',
                 is_verified=True
             )
             db.session.add(driver)
             db.session.commit()
+        else:
+            if driver.full_name == 'Speedy Delivery (Sim)':
+                driver.full_name = random.choice(driver_names)
+                db.session.commit()
             
         order.delivery_person_id = driver.user_id
         order.status = 'assigned'
+        
+        # Reset tracking location to Pharmacy coordinates
+        pharmacy = Pharmacy.query.get(order.pharmacy_id)
+        if pharmacy and pharmacy.latitude and pharmacy.longitude:
+            db.session.execute(
+                text("UPDATE delivery_orders SET tracking_location = POINT(:lng, :lat) WHERE order_id = :order_id"),
+                {'lng': float(pharmacy.longitude), 'lat': float(pharmacy.latitude), 'order_id': order_id}
+            )
         db.session.commit()
         
         # Start background thread

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -56,15 +57,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
     super.initState();
     _currentStatus = widget.status;
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000), // Match the 2s poll rate for seamless sliding
       vsync: this,
     );
     _determinePosition().then((_) {
       _fetchTrackingData();
     });
 
-    // Auto-refresh every 5 seconds
-    _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    // Auto-refresh every 2 seconds for a responsive real-time experience
+    _timer = Timer.periodic(const Duration(seconds: 2), (timer) {
       if (_currentStatus.toLowerCase() == 'delivered') {
         _timer?.cancel();
       } else {
@@ -90,7 +91,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
       if (permission == LocationPermission.deniedForever) return;
 
       final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 6),
       );
       if (mounted) {
         setState(() {
@@ -124,11 +126,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
             _oldDriverPos.latitude + (newPos.latitude - _oldDriverPos.latitude) * _animation!.value,
             _oldDriverPos.longitude + (newPos.longitude - _oldDriverPos.longitude) * _animation!.value,
           );
+          // Auto-center map on driver as they move
+          _mapController.move(_currentDriverPos, _mapController.camera.zoom);
         });
       }
     });
     
     _animationController?.forward(from: 0.0);
+  }
+
+  double _calculateDistance(LatLng p1, LatLng p2) {
+    const double r = 6371.0; // Earth radius in km
+    final double dLat = _degToRad(p2.latitude - p1.latitude);
+    final double dLng = _degToRad(p2.longitude - p1.longitude);
+    final double a = sin(dLat / 2) * sin(dLat / 2) +
+        cos(_degToRad(p1.latitude)) *
+            cos(_degToRad(p2.latitude)) *
+            sin(dLng / 2) *
+            sin(dLng / 2);
+    final double c = 2 * atan2(sqrt(a), sqrt(1 - a));
+    return r * c;
+  }
+
+  double _degToRad(double deg) {
+    return deg * (pi / 180.0);
   }
 
   Future<void> _fetchTrackingData() async {
@@ -196,6 +217,25 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
     }
   }
 
+  Widget _buildStatItem(IconData icon, String label, String value) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, color: Colors.blueAccent, size: 24),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(color: Colors.grey, fontSize: 12),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusIndex = _getStatusIndex();
@@ -228,6 +268,19 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
 
     // Initial center on customer home if driver isn't moving, or center on driver
     final initialMapCenter = _isFirstLoad ? customerPos : _currentDriverPos;
+
+    // Calculate remaining distance and ETA
+    final double remainingDistance = (_currentStatus.toLowerCase() == 'delivered')
+        ? 0.0
+        : _calculateDistance(
+            (driverLat != null && driverLng != null) ? _currentDriverPos : pharmacyPos,
+            customerPos,
+          );
+    final int etaMinutes = (_currentStatus.toLowerCase() == 'delivered')
+        ? 0
+        : (remainingDistance * 2.0).round();
+    final String distanceText = "${remainingDistance.toStringAsFixed(1)} km";
+    final String etaText = etaMinutes > 0 ? "$etaMinutes mins" : "Arrived";
 
     return Scaffold(
       appBar: AppBar(
@@ -345,32 +398,94 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                       userAgentPackageName: 'com.example.mediscan',
                       tileProvider: CancellableNetworkTileProvider(),
                     ),
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: [pharmacyPos, _currentDriverPos, customerPos],
+                          strokeWidth: 4.5,
+                          color: Colors.blueAccent,
+                          borderColor: Colors.blue.shade900,
+                          borderStrokeWidth: 1.5,
+                        ),
+                      ],
+                    ),
                     MarkerLayer(
                       markers: [
-                        // Pharmacy Marker (Green)
+                        // Pharmacy Marker (Green, Premium)
                         Marker(
                           point: pharmacyPos,
                           width: 50,
                           height: 50,
-                          child: const Icon(Icons.local_pharmacy,
-                              color: Colors.green, size: 40),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade600,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.local_pharmacy,
+                              color: Colors.white,
+                              size: 26,
+                            ),
+                          ),
                         ),
-                        // Destination Marker (Home - separate and clear)
+                        // Destination Marker (Home - Red, Premium)
                         Marker(
                           point: customerPos,
                           width: 50,
                           height: 50,
-                          child: const Icon(Icons.home,
-                              color: Colors.red, size: 40),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade600,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2.5),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.2),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.home,
+                              color: Colors.white,
+                              size: 26,
+                            ),
+                          ),
                         ),
-                        // Driver Marker (Blue, Animated)
+                        // Driver Marker (Blue, Animated, Premium)
                         if (driverLat != null && driverLng != null)
                           Marker(
                             point: _currentDriverPos,
-                            width: 60,
-                            height: 60,
-                            child: const Icon(Icons.delivery_dining,
-                                color: Colors.blue, size: 40),
+                            width: 50,
+                            height: 50,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade600,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: Colors.white, width: 2.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.2),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.delivery_dining,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
                           ),
                       ],
                     ),
@@ -443,10 +558,31 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                             ),
                           ],
                         ),
-                        const SizedBox(height: 20),
-                        Text("Status: ${_currentStatus.replaceAll('_', ' ')}",
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w500)),
+                        const SizedBox(height: 15),
+                        Text(
+                          "Status: ${_currentStatus.replaceAll('_', ' ').toUpperCase()}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.blueGrey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 15),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            _buildStatItem(
+                              Icons.directions_bike,
+                              "Distance",
+                              distanceText,
+                            ),
+                            _buildStatItem(
+                              Icons.access_time,
+                              "ETA",
+                              etaText,
+                            ),
+                          ],
+                        ),
                         const Spacer(),
                         Row(
                           children: [

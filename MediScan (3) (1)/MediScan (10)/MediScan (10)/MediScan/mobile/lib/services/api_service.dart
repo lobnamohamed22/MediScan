@@ -478,6 +478,26 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> getPharmacyInventoryById(String pharmacyId) async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedGet('$baseUrl/pharmacies/$pharmacyId/inventory');
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        try {
+          return jsonDecode(response.body);
+        } catch (e) {
+          return {'success': false, 'message': 'Invalid server response'};
+        }
+      }
+      return {'success': false, 'message': 'Failed to load pharmacy inventory'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
   static Future<Map<String, dynamic>> resolvePrices(List<String> names, {String? pharmacyId}) async {
     try {
       await _validateAuthentication();
@@ -876,10 +896,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> checkoutCart() async {
+  static Future<Map<String, dynamic>> checkoutCart({int redeemPoints = 0}) async {
     try {
       await _validateAuthentication();
-      final response = await _timedPost('$baseUrl/cart/checkout', {});
+      final response = await _timedPost('$baseUrl/cart/checkout', {
+        'redeem_points': redeemPoints,
+      });
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -887,6 +909,56 @@ class ApiService {
         return jsonDecode(response.body);
       }
       return {'success': false, 'message': 'Failed to checkout cart'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getWallet() async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedGet('$baseUrl/wallet');
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to get wallet info'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getWalletTransactions() async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedGet('$baseUrl/wallet/transactions');
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to get transactions'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> getCheckoutPreview(int redeemPoints) async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedPost('$baseUrl/cart/checkout/preview', {
+        'redeem_points': redeemPoints,
+      });
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to get checkout preview'};
     } catch (e) {
       return {'success': false, 'message': 'Network error'};
     }

@@ -14,6 +14,10 @@ class _CartScreenState extends State<CartScreen> {
   String _errorMessage = '';
   List<dynamic> _cartItems = [];
   double _totalPrice = 0.0;
+  int _userPoints = 0;
+  bool _usePoints = false;
+  double _pointsDiscount = 0.0;
+  double _finalTotalPrice = 0.0;
 
   @override
   void initState() {
@@ -28,6 +32,7 @@ class _CartScreenState extends State<CartScreen> {
     });
 
     final res = await ApiService.getCart();
+    final walletRes = await ApiService.getWallet();
 
     if (mounted) {
       if (res['success'] == true) {
@@ -35,6 +40,10 @@ class _CartScreenState extends State<CartScreen> {
           _cartItems = res['data']['items'] ?? [];
           _totalPrice =
               double.tryParse(res['data']['total_price'].toString()) ?? 0.0;
+          if (walletRes['success'] == true) {
+            _userPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
+          }
+          _updatePointsDiscount();
           _isLoading = false;
         });
       } else {
@@ -43,6 +52,22 @@ class _CartScreenState extends State<CartScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void _updatePointsDiscount() {
+    if (_usePoints && _userPoints > 0) {
+      double pointsValue = _userPoints * 0.1;
+      if (pointsValue > _totalPrice) {
+        _pointsDiscount = _totalPrice;
+        _finalTotalPrice = 0.0;
+      } else {
+        _pointsDiscount = pointsValue;
+        _finalTotalPrice = _totalPrice - pointsValue;
+      }
+    } else {
+      _pointsDiscount = 0.0;
+      _finalTotalPrice = _totalPrice;
     }
   }
 
@@ -86,7 +111,17 @@ class _CartScreenState extends State<CartScreen> {
   Future<void> _checkout() async {
     setState(() => _isLoading = true);
 
-    final res = await ApiService.checkoutCart();
+    int redeemPoints = 0;
+    if (_usePoints && _userPoints > 0) {
+      double pointsValue = _userPoints * 0.1;
+      if (pointsValue > _totalPrice) {
+        redeemPoints = (_totalPrice * 10).toInt();
+      } else {
+        redeemPoints = _userPoints;
+      }
+    }
+
+    final res = await ApiService.checkoutCart(redeemPoints: redeemPoints);
 
     if (mounted) {
       setState(() => _isLoading = false);
@@ -257,33 +292,77 @@ class _CartScreenState extends State<CartScreen> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            if (_userPoints > 0) ...[
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(
+                  'Redeem Points (Available: $_userPoints pts)',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+                subtitle: Text(
+                  _usePoints
+                      ? 'Discount: -${_pointsDiscount.toStringAsFixed(2)} EGP'
+                      : 'Equiv. to ${(_userPoints * 0.1).toStringAsFixed(2)} EGP',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _usePoints ? Colors.red : Colors.grey,
+                  ),
+                ),
+                value: _usePoints,
+                onChanged: (val) {
+                  setState(() {
+                    _usePoints = val ?? false;
+                    _updatePointsDiscount();
+                  });
+                },
+                activeColor: Colors.blue,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+            ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total Price',
-                    style: TextStyle(color: Colors.grey, fontSize: 14)),
-                Text(
-                  '${_totalPrice.toStringAsFixed(2)} EGP',
-                  style: const TextStyle(
-                      fontSize: 20, fontWeight: FontWeight.bold),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Total Price',
+                        style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    if (_pointsDiscount > 0) ...[
+                      Text(
+                        '${_totalPrice.toStringAsFixed(2)} EGP',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          decoration: TextDecoration.lineThrough,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                    Text(
+                      '${_finalTotalPrice.toStringAsFixed(2)} EGP',
+                      style: const TextStyle(
+                          fontSize: 20, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                ElevatedButton(
+                  onPressed: _checkout,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Checkout',
+                      style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
               ],
-            ),
-            ElevatedButton(
-              onPressed: _checkout,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Checkout',
-                  style: TextStyle(fontSize: 16, color: Colors.white)),
             ),
           ],
         ),

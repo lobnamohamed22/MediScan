@@ -6,6 +6,72 @@ from models.medicine import MedicineInfo, MedicineInventory, MedicineAlternative
 
 medicines_bp = Blueprint('medicines', __name__)
 
+def normalize_name(name):
+    # Returns (canonical_name, dosage)
+    import re
+    name_clean = name.strip().lower()
+    
+    # 1. Groupings of known medicines with OCR spelling mistakes
+    if any(x in name_clean for x in ['venusen', 'venosen', 'veneson', 'venuson', 'veneseni']):
+        return "Venusen Compression Stocking", "Class II"
+        
+    if any(x in name_clean for x in ['conventin', 'conventu', 'convenntu', 'conventus', 'convenia']):
+        return "Conventin", "100mg"
+        
+    if any(x in name_clean for x in ['recoxibright', 'recoribright', 'pecoribright']):
+        return "Recoxibright", "90mg"
+        
+    if any(x in name_clean for x in ['sulfax', 'sulfox', 'sulfiox', 'sulfoa', 'sulfora']):
+        return "Sulfax Gel", "Gel"
+        
+    if "panadol extra" in name_clean:
+        return "Panadol Extra", "500mg"
+    if "panadol cold" in name_clean:
+        return "Panadol Cold & Flu", "Cold & Flu"
+    if "panadol" in name_clean:
+        return "Panadol", "500mg"
+    if "paracetamol" in name_clean:
+        return "Paracetamol", "500mg"
+        
+    if "cataflam" in name_clean:
+        return "Cataflam", "50mg"
+    if "catafast" in name_clean:
+        return "Catafast", "50mg"
+        
+    if "otrivin" in name_clean:
+        return "Otrivin Nasal Spray", "Nasal Spray"
+        
+    if "augmentin" in name_clean:
+        return "Augmentin", "1g"
+        
+    if "nexium" in name_clean:
+        return "Nexium", "40mg"
+        
+    if "ventolin" in name_clean:
+        return "Ventolin", "Inhaler"
+        
+    if "duphaston" in name_clean:
+        return "Duphaston", "10mg"
+        
+    if "thiopro" in name_clean:
+        return "Thiopro", "100mg"
+        
+    if "puravil" in name_clean:
+        return "Puravil", "100mg"
+        
+    # 2. General parsing
+    dosage_match = re.search(r'(\d+\s*(?:mg|g|mcg|ml|gm|%))', name, re.IGNORECASE)
+    dosage = dosage_match.group(1) if dosage_match else "None"
+    
+    base_name = name
+    if dosage_match:
+        base_name = name.replace(dosage_match.group(1), "")
+    
+    base_name = re.sub(r'\s+', ' ', base_name).strip().strip(',').strip('-').strip()
+    base_name = base_name.title()
+    
+    return base_name, dosage
+
 # -------------------------------
 # 1. SEARCH MEDICINES
 # -------------------------------
@@ -29,12 +95,52 @@ def search_medicines():
             (MedicineInfo.generic_name.ilike(f'%{q}%'))
         ).group_by(MedicineInfo.id).all()
 
-        data = []
+        deduplicated = {}
         for m_info, total_stock, avg_price in results:
+            name = m_info.medicine_name
+            canonical_name, dosage = normalize_name(name)
+            key = (canonical_name.lower(), dosage.lower())
+            
             m_dict = m_info.to_dict()
             m_dict['stock'] = int(total_stock) if total_stock is not None else 0
             m_dict['price'] = float(avg_price) if avg_price is not None else 0.0
-            data.append(m_dict)
+            
+            # Format display name nicely
+            display_name = canonical_name
+            if dosage != "None" and dosage != "Gel" and dosage.lower() not in canonical_name.lower():
+                display_name = f"{canonical_name} {dosage}"
+            m_dict['medicine_name'] = display_name
+            
+            # Rate candidates based on verification status and image quality
+            is_verified = m_dict.get('status') == 'Verified'
+            has_real_image = m_dict.get('medicine_image') and 'generic_pill.png' not in m_dict.get('medicine_image', '')
+            
+            score = 0
+            if is_verified:
+                score += 10
+            if has_real_image:
+                score += 5
+            if m_info.medicine_name.lower() == canonical_name.lower():
+                score += 2
+                
+            if key not in deduplicated:
+                deduplicated[key] = (score, m_dict)
+            else:
+                existing_score, existing_dict = deduplicated[key]
+                if score > existing_score:
+                    # Keep higher scored record, but merge inventory stock and price
+                    m_dict['stock'] = max(m_dict['stock'], existing_dict['stock'])
+                    if m_dict['price'] == 0.0 and existing_dict['price'] > 0.0:
+                        m_dict['price'] = existing_dict['price']
+                    deduplicated[key] = (score, m_dict)
+                else:
+                    # Accumulate stock and price in existing record
+                    existing_dict['stock'] = max(existing_dict['stock'], m_dict['stock'])
+                    if existing_dict['price'] == 0.0 and m_dict['price'] > 0.0:
+                        existing_dict['price'] = m_dict['price']
+                        
+        data = [item for score, item in deduplicated.values()]
+        data.sort(key=lambda x: x['medicine_name'])
 
         return jsonify({
             'success': True,

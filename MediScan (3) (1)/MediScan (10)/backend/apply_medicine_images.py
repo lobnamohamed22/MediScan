@@ -42,6 +42,15 @@ def run_migration():
         shutil.copy(sulfox_path, sulfax_path)
         print(f"Copied Sulfax image: {sulfox_path} -> {sulfax_path}", flush=True)
         
+    # 3b. Copy generated Venusen Stocking package image
+    stocking_source = r"C:\Users\lenovo\.gemini\antigravity\brain\b191a347-2f25-473e-9114-9844328dbf6d\venusen_stockings_1780852855800.png"
+    stocking_dest = os.path.join(meds_dir, "venusen.png")
+    if os.path.exists(stocking_source):
+        shutil.copy(stocking_source, stocking_dest)
+        print(f"Copied Venusen stocking image: {stocking_source} -> {stocking_dest}", flush=True)
+    else:
+        print(f"Warning: Venusen source file not found at {stocking_source}", flush=True)
+        
     # 4. Loop through and update database records
     print("\n--- Updating database records in medicine_info ---", flush=True)
     meds = MedicineInfo.query.all()

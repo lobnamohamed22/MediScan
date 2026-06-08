@@ -289,16 +289,38 @@ def resolve_medicine_image_path(medicine_name, uploads_dir):
         return '/uploads/medicines/amoxicillin.png'
     elif 'augmentin' in name_lower:
         return '/uploads/medicines/augmentin.png'
-    elif 'conventin' in name_lower or 'gabapentin' in name_lower:
+    elif any(k in name_lower for k in ['conventin', 'gabapentin', 'conveniui', 'conventiui', 'convenu', 'conventu', 'conveni', 'conven', 'convenl']):
         return '/uploads/medicines/conventin.png'
     elif 'nexium' in name_lower or 'esomeprazole' in name_lower:
         return '/uploads/medicines/nexium.png'
-    elif 'recoxibright' in name_lower or 'etoricoxib' in name_lower:
+    elif any(k in name_lower for k in ['recoxibright', 'etoricoxib', 'recoribright', 'recori', 'recox']):
         return '/uploads/medicines/recoxibright.png'
     elif 'sulfax' in name_lower:
         return '/uploads/medicines/sulfax.png'
-    elif 'sulfox' in name_lower:
+    elif any(k in name_lower for k in ['sulfox', 'sulfoa', 'sulfora', 'sulfox gel', 'sulfora gel']):
         return '/uploads/medicines/sulfox.png'
+    elif any(k in name_lower for k in ['venusen', 'venoson', 'venusan', 'venuson', 'venus', 'venos', 'stocking']):
+        return '/uploads/medicines/venusen.png'
+    elif 'acyclovir' in name_lower:
+        return '/uploads/medicines/acyclovir_400mg.png'
+    elif 'amlodipine' in name_lower:
+        return '/uploads/medicines/amlodipine_5mg.png'
+    elif 'amoxicillin 500mg' in name_lower:
+        return '/uploads/medicines/amoxicillin_500mg.png'
+    elif 'atorvastatin' in name_lower:
+        return '/uploads/medicines/atorvastatin_20mg.png'
+    elif 'januvia' in name_lower:
+        return '/uploads/medicines/januvia_100mg.png'
+    elif 'voltaren' in name_lower:
+        return '/uploads/medicines/voltaren_75mg.png'
+    elif 'cozaar' in name_lower:
+        return '/uploads/medicines/cozaar_50mg.png'
+    elif 'flagyl' in name_lower:
+        return '/uploads/medicines/flagyl_500mg.png'
+    elif 'lipitor' in name_lower:
+        return '/uploads/medicines/lipitor_20mg.png'
+    elif 'ventolin' in name_lower:
+        return '/uploads/medicines/ventolin.png'
         
     # 2. Remote image retrieval from trusted source (DailyMed NLM)
     remote_path = fetch_medicine_image_from_dailymed(medicine_name, uploads_dir)

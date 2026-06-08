@@ -1,0 +1,144 @@
+--- Sample of Address/Name issues ---
+ID: 0066d622-ab38-404a-b987-4836c714ed2c | Name: Al-Isaaf | Address: Pharmacy near 30.0870, 31.3056
+ID: 044179d1-3a0c-49c9-904e-10bf66fd36a9 | Name: عز الدين | Address: Pharmacy near 30.0912, 31.3169
+ID: 05eb84f1-8166-4ea4-b7cc-502e7a6eb4f9 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0671, 31.2222
+ID: 08cfbca0-fe77-47cc-bdd9-c92664d9204d | Name: Serenade | Address: Pharmacy near 29.9724, 31.2742
+ID: 0a4baf1a-63cb-4405-8121-7c5feb3542ad | Name: صيدلية أبو العز | Address: Pharmacy near 30.0297, 31.2326
+ID: 0f525f1f-26ec-49dd-b034-e19052c4855a | Name: Unnamed Pharmacy | Address: Pharmacy near 51.5434, -0.0905
+ID: 10e40b78-7aef-4606-b305-adc36ac878b4 | Name: Maddock Pharmacy | Address: Pharmacy near 51.4825, -0.1028
+ID: 11567a58-4533-4b2c-b84b-eff16d863285 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0874, 31.2955
+ID: 13329527-6875-4910-865f-26d580907acb | Name: البدري | Address: Pharmacy near 30.0644, 31.2050
+ID: 1362edeb-561d-4999-9d69-fa041bc3e5ae | Name: St George | Address: Pharmacy near 51.4954, -0.1015
+ID: 13c4ce44-b92d-483d-ad94-6d7b55e5de81 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0397, 31.2027
+ID: 15150d27-971f-496a-ac66-ad95d7feb66d | Name: Abdel-Khaiek | Address: Pharmacy near 30.0844, 31.3302
+ID: 162d27f8-f9ea-4cec-859a-9084f610c239 | Name: Pharmacy 24/7 | Address: Pharmacy near 30.0344, 31.2117
+ID: 1a05691a-9a8b-4c87-8792-eda86959983c | Name: East Degla Pharmacy | Address: Pharmacy near 29.9624, 31.2768
+ID: 1bcfe017-1b37-4c82-aff8-70d91b8059a4 | Name: Sandy pharmacy | Address: Pharmacy near 30.0663, 31.3430
+ID: 1d0bb952-046c-4148-b6ae-c9df8327afb9 | Name: Shiv | Address: Pharmacy near 51.5170, -0.1430
+ID: 1d28e1b7-6907-4924-9722-5f3e9c053075 | Name: Dr. Sara Talat | Address: Pharmacy near 30.0818, 31.3346
+ID: 1f1a2079-7fad-43b2-8266-b61edcd7a74a | Name: Benzpharm | Address: Pharmacy near 51.5368, -0.0963
+ID: 20a9e12d-e3b8-4524-b3a3-b35b866096d6 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0323, 31.1877
+ID: 21f08b9a-c0bd-466e-940a-ba242365d736 | Name: HealthChem | Address: Pharmacy near 51.4767, -0.1686
+ID: 26d991b2-b0c2-4582-bd47-2dfe866beed4 | Name: Unnamed Pharmacy | Address: Pharmacy near 51.5203, -0.1229
+ID: 2aa58bf3-037e-45ee-99b4-febaeea6f913 | Name: Sheel Pharmacy | Address: Pharmacy near 51.4796, -0.0998
+ID: 2b0f69f3-4d46-42e2-923d-20269e7d20ad | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0051, 31.2296
+ID: 2fe8ee7d-5e1b-4783-b789-49c2626d0a26 | Name: Hobbs Pharmacy | Address: Pharmacy near 51.4970, -0.0696
+ID: 319f9e6a-0902-43a1-adb9-bf98baa06062 | Name: صيدلية المنى | Address: Pharmacy near 30.0429, 31.1973
+ID: 32aa3325-82dc-49ff-92d9-6e6e1e169618 | Name: Mti | Address: Pharmacy near 29.9954, 31.3184
+ID: 332f18d7-d7f2-4817-ae89-2b74825637f4 | Name: Shatila Pharmacy | Address: Pharmacy near 30.0947, 31.3347
+ID: 3417412f-607a-4268-9374-9c926005f818 | Name: صيدلية اللواء | Address: Pharmacy near 30.0544, 31.1894
+ID: 349478ab-84cf-4b14-8dc5-0b67efe20e5b | Name: سالم | Address: Pharmacy near 30.0165, 31.2253
+ID: 39445ca5-b912-4593-be96-4b0f4569173a | Name: Keencare Pharmacy | Address: Pharmacy near 51.4963, -0.1473
+ID: 39c428be-491d-4c00-a92d-b5095b2e8e54 | Name: ايهاب سمير | Address: Pharmacy near 30.0206, 31.2250
+ID: 3aa54f71-920f-4291-99a2-7899695e26be | Name: Essex Chemist & Opticians | Address: Pharmacy near 51.5373, -0.1009
+ID: 4085523e-9aca-4308-9475-01db331e84d9 | Name: Al-Zohoor | Address: Pharmacy near 30.0479, 31.3401
+ID: 4256ff76-31c2-460d-99fd-92771701a0e9 | Name: Chinese Medicine Centre | Address: Pharmacy near 51.5171, -0.1235
+ID: 43141de5-894d-44bc-9682-48344327ed14 | Name: Apex Pharmacy | Address: Pharmacy near 51.5407, -0.0952
+ID: 460368f5-2c73-4d94-90db-9c48ae55f9de | Name: صيدلية الإسعاف | Address: Pharmacy near 30.0538, 31.2387
+ID: 46b40486-1fb8-4114-8704-3e9b4a29bd1f | Name: Well Pharmacy | Address: Pharmacy near 51.5281, -0.1326
+ID: 477202d6-1357-4c8d-994f-9186c87255da | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0451, 31.2465
+ID: 47f8c8d0-9fd6-40ee-b3d4-fd2467c7ded3 | Name: Pharmacy SWSN ALHDYTha | Address: Pharmacy near 30.0543, 31.3812
+ID: 4c067436-695e-46ea-b8c6-a0d201b4231e | Name: Watsons | Address: Pharmacy near 51.5147, -0.1321
+ID: 4fb3c201-2cea-4a97-9ff8-31f504ea1cf2 | Name: Unnamed Pharmacy | Address: Pharmacy near 51.5001, -0.1951
+ID: 540200b7-f7a9-45c0-8620-f4a2e5793397 | Name: صلاح الدين | Address: Pharmacy near 30.0427, 31.2026
+ID: 54cd64a2-0562-410d-8cb4-98ddd1e31cdc | Name: King’s Outpatient Pharmacy | Address: Pharmacy near 51.4696, -0.0929
+ID: 57a6f115-c99f-41ef-bf14-bcd476850edb | Name: صيدلية نورالدين | Address: Pharmacy near 30.1222, 31.1917
+ID: 57d315fd-a797-4e7e-976c-6c4676608388 | Name: the pharmacy | Address: Pharmacy near 51.5080, -0.1059
+ID: 57d87e0f-7b58-40dd-ace4-639e9c5a0184 | Name: صيدلية الاسكندرية | Address: Pharmacy near 30.0999, 31.3168
+ID: 595e3be9-9746-47f5-b7ec-59dc0d693432 | Name: Dr. Dina Safwat | Address: Pharmacy near 30.0892, 31.3372
+ID: 5c38f0f2-2fcb-42af-a436-d6fb24b58de5 | Name: العزبي | Address: Pharmacy near 29.9853, 31.2301
+ID: 5db33389-e3f7-4b83-b688-839a2355db01 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0461, 31.2674
+ID: 5e46b788-90a8-4af5-a6fa-e34e665d662a | Name: صيدلية محمود | Address: Pharmacy near 30.1015, 31.2618
+ID: 6049bfa6-37f5-49fd-be36-9211e5cfb415 | Name: Care pharmacy | Address: Pharmacy near 30.0959, 31.3421
+ID: 63854e3a-9946-4bb6-b463-c40fab3c8e14 | Name: صيدلية العزبي | Address: Pharmacy near 29.9949, 31.1637
+ID: 66341fb2-3871-4425-a939-0d4ef1ce81d8 | Name: نورمندي | Address: Pharmacy near 30.0918, 31.3227
+ID: 6899c6be-f92b-424c-8f75-62c9bb0f6780 | Name: Nagui | Address: Pharmacy near 30.0628, 31.2231
+ID: 69663cf5-cde4-4428-a7a1-7085888689d2 | Name: Boots | Address: Pharmacy near 51.5204, -0.1427
+ID: 6d84d9f1-222c-46b7-9c95-df775ce5dc51 | Name: Clinichem Pharmacy | Address: Pharmacy near 51.4927, -0.1388
+ID: 6e634394-a4bc-47c2-9bff-b3b2f3a068f0 | Name: Cambelle Pharmacy | Address: Pharmacy near 51.4939, -0.0747
+ID: 6e90155a-e615-42e8-9161-1ed4da173aff | Name: elezaby | Address: Pharmacy near 30.0475, 31.2626
+ID: 761a2bd8-1097-4bc3-bb57-dd4e5057f600 | Name: Dawaa | Address: Pharmacy near 30.0634, 31.3428
+ID: 78eeeb73-5d97-4fc8-8d7d-e143bb2e5ee9 | Name: Healthxchange Pharmacy | Address: Pharmacy near 51.5183, -0.1422
+ID: 7c6ccb53-49bc-47f7-9778-94367b07eacd | Name: صيدلية حياتي | Address: Pharmacy near 29.9668, 31.2479
+ID: 7f3d8c5e-1c9a-4d0e-8c6b-67d4dcf4b9d5 | Name: Gomhouria Pharmacy | Address: Pharmacy near 30.0602, 31.2213
+ID: 7ff3abc2-d22a-4b20-b02d-b93805fa9bcf | Name: دلمار وعطاالله | Address: Pharmacy near 29.9719, 31.2471
+ID: 801a5795-c9fe-4e8c-b5c9-1c196e4432d3 | Name: السمني | Address: Pharmacy near 30.0413, 31.2028
+ID: 812c88cc-327f-415d-9b71-d5eb0abf8926 | Name: Holborn Pharmacy | Address: Pharmacy near 51.5199, -0.1220
+ID: 81562825-9349-4bf3-8a24-63cf89374f42 | Name: Mira Pharmacy | Address: Pharmacy near 30.0660, 31.2165
+ID: 81b01f0b-9628-4f26-8c1c-b723b65ade11 | Name: Unnamed Pharmacy | Address: Pharmacy near 51.5342, -0.1385
+ID: 82986a55-2eb3-43b8-a1dd-81723995712f | Name: Crystal pharmacy | Address: Pharmacy near 30.0941, 31.3309
+ID: 82bc4edc-d7f1-46d0-b826-747a8cb4a642 | Name: El Nagar | Address: Pharmacy near 30.0462, 31.3568
+ID: 842a4d18-067b-4e3b-bfa4-ad910dcf152f | Name: N.V.S. Pharmacy | Address: Baker Street, London
+ID: 86e6192e-8437-4d19-9f8f-1a470e586e78 | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0486, 31.2356
+ID: 895d33ef-16ed-4232-9fc1-cc32cac56a18 | Name: عزبي | Address: Pharmacy near 30.0823, 31.3290
+ID: 8bdb1671-ae39-4fb2-810b-0d39f26e0405 | Name: Unnamed Pharmacy | Address: Pharmacy near 51.5164, -0.1874
+ID: 8d23a616-23f7-4646-b0d0-cd5e53c2ac2e | Name: Kamsons Pharmacy | Address: Pharmacy near 51.4655, -0.1361
+ID: 8dd1b98a-0897-4768-be89-fce54d1443c5 | Name: Unnamed Pharmacy | Address: Pharmacy near 29.9842, 31.3122
+ID: 9484ccd5-47fb-4769-a2ed-e6d0f59800b8 | Name: فضل | Address: Pharmacy near 30.0448, 31.2470
+ID: 957d3fdf-a4bb-4b77-8705-d97eb2ae116c | Name: صيدلية دكتور سامح | Address: Pharmacy near 30.0909, 31.3112
+ID: 967b4bb4-c336-4e5f-ba82-1e5da12fb4e8 | Name: Day Lewis Pharmacy | Address: Pharmacy near 51.4761, -0.1061
+ID: 999a4921-3548-483e-bb36-a3b3defb645d | Name: Pearl Pharmacy | Address: Pharmacy near 51.4643, -0.1311
+ID: 9a2ad8ea-c916-40eb-8326-1928b29cb85f | Name: Africia | Address: Pharmacy near 30.0601, 31.3458
+ID: 9f5fafd3-0307-47c0-9891-c8650c7e39ad | Name: Pulse Pharmacy | Address: Pharmacy near 51.4707, -0.1246
+ID: a318dddc-68d7-4b54-9b95-c27fe8d8a3cf | Name: W.C & K. King Chemist | Address: Amwell Street, London
+ID: a3e4154b-e5b7-4ee9-ad79-f0ff6ade9e2f | Name: Makram pharmacy | Address: Pharmacy near 30.0641, 31.3445
+ID: a5a5fde5-3d1f-4488-bd40-38be28eeb94f | Name: Al Azaby | Address: Pharmacy near 30.0472, 31.2386
+ID: a630628a-a6a0-4883-b4ba-b686e780a04e | Name: Sakla | Address: Pharmacy near 29.9693, 31.2787
+ID: a7604a3d-5e5b-4b29-bb78-63268e9ee0b9 | Name: C. W. Andrew | Address: Pharmacy near 51.5125, -0.1434
+ID: a7dcf362-6fde-40c1-9891-ef95f741d4a6 | Name: مصطفى محمود | Address: Pharmacy near 30.0528, 31.3311
+ID: aa6a0941-5c47-40fa-91b6-1d9d9d7ae050 | Name: صيدلية اشرف | Address: Pharmacy near 30.0884, 31.3074
+ID: ac461674-84f1-4bb3-a8fe-f301991b00f4 | Name: Egerton Pharmacy | Address: Pharmacy near 51.5493, -0.1083
+ID: b0534efa-9e50-48ff-9e39-ff72c8e40171 | Name: Dawa2y | Address: Pharmacy near 30.0390, 31.2039
+ID: b0691d20-8f0a-4dbb-9d4b-bdf7daa7a217 | Name: صيدلية | Address: Pharmacy near 30.1026, 31.2610
+ID: b0c0e204-fb79-4803-b0a9-b8de5d1ee443 | Name: صيدليه الوليد | Address: Pharmacy near 30.0132, 31.1851
+ID: b27c3c8f-337b-4287-9837-5e22c0fd782e | Name: Zen | Address: Pharmacy near 51.5211, -0.1234
+ID: b383d4bb-a7ba-4963-90b0-bbf006f734e3 | Name: North London Health Centre | Address: Pharmacy near 51.5380, -0.0921
+ID: b48ddb39-859c-4612-8eb1-4618f926d800 | Name: Superdrug | Address: Pharmacy near 51.5144, -0.0945
+ID: b5e027ce-21f1-4f5f-9069-57feaf6acc3a | Name: مكة | Address: Pharmacy near 30.0919, 31.3165
+ID: b79bbf6d-b355-4afc-8251-3d0816147990 | Name: St Peter's Pharmacy | Address: Pharmacy near 51.5347, -0.0985
+ID: bacbcd32-6224-4faa-a88f-6b1add860db1 | Name: Ridgway Pharmacy | Address: Pharmacy near 51.4883, -0.0956
+ID: bbf2804e-ba52-4695-8022-1cae6d9ccbe8 | Name: Apex Pharmacy | Address: Pharmacy near 51.5256, -0.0901
+ID: bdc69d17-469e-4b1a-8a88-e61f27b5a1e2 | Name: صيدلية ليلة | Address: Pharmacy near 30.0118, 31.3290
+ID: be34df52-518e-4d5f-92a4-2fb9253d1392 | Name: Savemain Pharmacy | Address: Pharmacy near 51.5400, -0.0966
+ID: bf58c25f-e711-4d6d-8268-80615799ad71 | Name: Mohamed Salama Pharmacy | Address: Pharmacy near 30.0602, 31.2231
+ID: c15d2074-be70-4374-8ca0-9913b06eea27 | Name: صيدليات نهلة | Address: Pharmacy near 30.0061, 31.1898
+ID: c2e114e9-7968-447b-80f3-de0ceeaf4936 | Name: Greens Pharmacy | Address: Pharmacy near 51.4897, -0.1500
+ID: c6c4e14f-58ef-4fcf-a75f-72fe5db8073f | Name: Al-Safa pharmacy | Address: Pharmacy near 30.0828, 31.3375
+ID: c6f3e03d-fe75-460c-9b51-11fa3e92b383 | Name: صيدليه الشنهاب | Address: Pharmacy near 30.0030, 31.1715
+ID: c91a348b-30c8-4850-947c-57dc75e99957 | Name: Dr George Anwar ferig | Address: Pharmacy near 30.0467, 31.2467
+ID: c98a4184-acb3-4a8f-a8b8-c3b1ddd77b8c | Name: sandy Pharmacy | Address: Pharmacy near 51.5494, -0.1528
+ID: cb60039f-0ca8-45a2-9572-e3d34cc0c858 | Name: صيدلية الاسعاف برمسيس | Address: Pharmacy near 30.0505, 31.2432
+ID: ccd74ba4-ea8f-4a74-9f6c-8322fba045cc | Name: The Organic Pharmacy | Address: Pharmacy near 51.5141, -0.1405
+ID: cdd9b87c-bf0d-40ac-919d-5eb11e770acd | Name: Dr. Nasr Al-Din Pharmacy | Address: Pharmacy near 30.0498, 31.1873
+ID: cfe31260-c803-4e32-90a1-81388dcbe34a | Name: Hindam | Address: Pharmacy near 29.9599, 31.2598
+ID: d355fd37-598c-4d08-9cda-bf89ad622b82 | Name: Pharmacy KARMN | Address: Pharmacy near 30.0561, 31.3615
+ID: d54e5514-15bc-4486-acf3-b5729e0d8a62 | Name: Harfleur Pharmacy | Address: Pharmacy near 51.4967, -0.0825
+ID: d58d4bf3-167c-4023-9009-03a872409f7b | Name: New Universal Pharmacy | Address: Pharmacy near 30.0615, 31.2229
+ID: d8027e2c-3f0b-48ca-82a4-d4a62d22242f | Name: York Pharmacy | Address: Pharmacy near 51.5487, -0.1283
+ID: d98a7d77-6633-49fb-8524-9402e0b57fc4 | Name: Al-Quds pharmacy | Address: Pharmacy near 30.0850, 31.3386
+ID: d9a4079d-b00a-4834-a8e6-ca28475f8d36 | Name: نورمندي | Address: Pharmacy near 30.0884, 31.3084
+ID: dcaafdde-1349-4907-b67d-7803106bc72e | Name: Paxall Pharmacy | Address: Pharmacy near 51.4883, -0.1379
+ID: dccee82b-ebf5-4c68-8e16-86068cfa34be | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0834, 31.3272
+ID: ddda35fe-b2b7-47c4-a8b9-5856d9333c1a | Name: Unnamed Pharmacy | Address: Pharmacy near 51.4753, -0.1045
+ID: e07121c0-9f50-4012-a57b-5dded46238b7 | Name: صيدلية د. نورهان | Address: Pharmacy near 30.0403, 31.2516
+ID: e1d4bd35-7fa4-4fd7-8e40-28e7c680be98 | Name: Hanna pharmacy | Address: Pharmacy near 30.0840, 31.3294
+ID: e2ce64f7-4c5d-41a0-9bee-73771a0e2683 | Name: DMB Chemist | Address: Watney Market, London
+ID: e3804c75-ea4e-4f99-8d6d-194aa3de6b05 | Name: العزبي | Address: Pharmacy near 30.0838, 31.3283
+ID: e63b693d-6e79-4002-a24e-b6a5ada92850 | Name: Maadi Recent Pharmacy | Address: Pharmacy near 29.9589, 31.2606
+ID: e6616753-81e4-4f94-8e13-35856d035600 | Name: Tesco Pharmacy | Address: Pharmacy near 51.4867, -0.1151
+ID: e7719715-9d47-4308-bbcb-76f9e14d0d1d | Name: Boon | Address: Pharmacy near 29.9788, 31.2333
+ID: e81b1ccc-44d4-41e0-a135-a4c564156342 | Name: ص.رنا | Address: Pharmacy near 30.0911, 31.2726
+ID: ea24dc64-963b-4562-9176-68237e3f618e | Name: Unnamed Pharmacy | Address: Pharmacy near 30.0628, 31.2201
+ID: ea8d0b75-71fd-4951-b3f8-4ab01e293afe | Name: Day Lewis Pharmacy | Address: Pharmacy near 51.4678, -0.1186
+ID: ed0ea8f9-76ba-465e-b91e-b618b1669014 | Name: صيدليات سيف | Address: Pharmacy near 29.9662, 31.2462
+ID: f0daa951-2525-41cb-bb93-e553c97159fb | Name: Pharmacy Roushdy | Address: Pharmacy near 30.0601, 31.3605
+ID: f6a7fb7c-7ae4-4146-82d6-45ec6af8e8a5 | Name: Elezaby | Address: Pharmacy near 29.9588, 31.2592
+ID: f748fba8-7776-475c-b1cd-0614265b531b | Name: Tesco Pharmacy | Address: Pharmacy near 51.4888, -0.0763
+ID: f82d542d-84bc-47ea-a08f-80cf117f7d71 | Name: Dr Rafaat Pharmacy | Address: Pharmacy near 29.9582, 31.2581
+ID: fa5d7997-b7b5-4cde-9a83-ebb5b1ab6abc | Name: صيدليه الفتح | Address: Pharmacy near 29.9947, 31.1766
+ID: fc14feb1-a568-400d-ba0d-5b04f13bd7b8 | Name: Green Light Pharmacy | Address: Pharmacy near 51.5266, -0.1384
+ID: fc99a457-538a-456f-8842-e4658769b205 | Name: Asda | Address: Pharmacy near 51.4846, -0.0696
+ID: fcdde792-12f4-4df5-9f0b-038b01104fd5 | Name: سحر | Address: Pharmacy near 30.0894, 31.3137
+ID: fd7b4c16-2268-489f-8091-0d199fc017de | Name: عماد | Address: Pharmacy near 30.0912, 31.3184
+
+Summary: Coord addresses: 138, Franco names: 4
