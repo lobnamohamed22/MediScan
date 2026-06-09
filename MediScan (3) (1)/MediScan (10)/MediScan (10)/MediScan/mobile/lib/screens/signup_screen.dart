@@ -49,6 +49,42 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!mounted) return;
 
       if (result['success']) {
+        // Request location permission for new user
+        try {
+          LocationPermission permission = await Geolocator.checkPermission();
+          if (permission == LocationPermission.denied) {
+            if (mounted) {
+              await showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) => AlertDialog(
+                  title: const Text('Location Access'),
+                  content: const Text(
+                    'MediScan requests location access to find nearby pharmacies and enable medicine deliveries to your address.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                      },
+                      child: const Text('Cancel'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await Geolocator.requestPermission();
+                      },
+                      child: const Text('Grant Permission'),
+                    ),
+                  ],
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          debugPrint('Location request error during signup: $e');
+        }
+
         // Navigate based on role just like login
         String route = '/home';
         if (roleParam == 'admin') {
@@ -59,8 +95,10 @@ class _SignupScreenState extends State<SignupScreen> {
           route = '/pharmacy-dashboard';
         }
         
-        Navigator.of(context)
-            .pushNamedAndRemoveUntil(route, (r) => false);
+        if (mounted) {
+          Navigator.of(context)
+              .pushNamedAndRemoveUntil(route, (r) => false);
+        }
       } else {
         String errorMessage = result['message'] ?? 'Registration failed';
         final lowerMsg = errorMessage.toLowerCase();

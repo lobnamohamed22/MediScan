@@ -149,8 +149,14 @@ def remove_cart_item(item_id):
         if not item:
             return jsonify({'success': False, 'message': 'Item not found'}), 404
             
+        cart = item.cart
         db.session.delete(item)
         db.session.commit()
+        
+        if not cart.items:
+            cart.pharmacy_id = None
+            db.session.commit()
+            
         return jsonify({'success': True, 'message': 'Item removed'}), 200
     except Exception as e:
         db.session.rollback()
@@ -206,6 +212,19 @@ def checkout():
         if cart.pharmacy_id:
             pharmacy = Pharmacy.query.filter_by(pharmacy_id=cart.pharmacy_id).first()
         if not pharmacy:
+            med_ids = [item.medicine_id for item in cart.items]
+            if med_ids:
+                med_names = [r[0] for r in db.session.query(MedicineInfo.medicine_name).filter(MedicineInfo.id.in_(med_ids)).all()]
+                if med_names:
+                    stock_pharms = db.session.query(MedicineInventory.pharmacy_id).\
+                        filter(MedicineInventory.medicine_name.in_(med_names), MedicineInventory.stock_quantity > 0).\
+                        group_by(MedicineInventory.pharmacy_id).\
+                        all()
+                    if stock_pharms:
+                        import random
+                        pharm_id_choice = random.choice([sp[0] for sp in stock_pharms])
+                        pharmacy = Pharmacy.query.filter_by(pharmacy_id=pharm_id_choice).first()
+        if not pharmacy:
             pharmacy = Pharmacy.query.first()
             
         if not pharmacy:
@@ -237,6 +256,7 @@ def checkout():
         for item in cart.items:
             db.session.delete(item)
             
+        cart.pharmacy_id = None
         db.session.commit()
         
         return jsonify({

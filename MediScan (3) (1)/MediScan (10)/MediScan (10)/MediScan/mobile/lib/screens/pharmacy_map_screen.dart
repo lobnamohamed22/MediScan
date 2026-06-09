@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_map_cancellable_tile_provider/flutter_map_cancellable_tile_provider.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import '../models/pharmacy.dart';
 import 'order_details_screen.dart';
@@ -60,7 +61,12 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
     try {
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        final prefs = await SharedPreferences.getInstance();
+        final alreadyAsked = prefs.getBool('first_launch_location_asked') ?? false;
+        if (!alreadyAsked) {
+          await prefs.setBool('first_launch_location_asked', true);
+          permission = await Geolocator.requestPermission();
+        }
       }
 
       if (permission == LocationPermission.whileInUse ||

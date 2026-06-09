@@ -134,15 +134,14 @@ def get_profile():
 
             if accuracy_count > 0:
                 avg_accuracy = accuracy_sum / accuracy_count
+                accuracy_str = f"{avg_accuracy:.1f}%"
             else:
-                avg_accuracy = 98.2 # Standard premium baseline for new accounts with 0 scans
-
-            accuracy_str = f"{avg_accuracy:.1f}%"
+                accuracy_str = "0%"
         except Exception as stats_err:
             app.logger.error(f"Error computing user stats: {stats_err}")
             prescriptions_count = 0
             pharmacies_count = 0
-            accuracy_str = "98.2%"
+            accuracy_str = "0%"
 
         user_dict['prescriptions_count'] = prescriptions_count
         user_dict['pharmacies_count'] = pharmacies_count

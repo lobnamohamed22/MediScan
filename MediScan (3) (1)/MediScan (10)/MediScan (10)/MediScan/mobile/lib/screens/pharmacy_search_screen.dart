@@ -3,6 +3,7 @@ import 'pharmacy_map_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/pharmacy.dart';
 import '../services/api_service.dart';
@@ -59,9 +60,55 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
     _filtered = List<Pharmacy>.from(_cachedPharmacies);
     _searchController.addListener(_onSearchChanged);
     
-    // If cache is empty, load fallback pharmacies instantly in background
-    if (_allPharmacies.isEmpty) {
-      _applyFilters();
+    _checkPermissionAndInitialize();
+  }
+
+  Future<void> _checkPermissionAndInitialize() async {
+    try {
+      final permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.whileInUse ||
+          permission == LocationPermission.always) {
+        // Location is already granted! Automatically get position and load nearby
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 4),
+        );
+        if (mounted) {
+          setState(() {
+            _userPosition = pos;
+            _isUsingGPS = true;
+          });
+        }
+      } else if (permission == LocationPermission.denied) {
+        // Check if we already asked once on first launch
+        final prefs = await SharedPreferences.getInstance();
+        final alreadyAsked = prefs.getBool('first_launch_location_asked') ?? false;
+        if (!alreadyAsked) {
+          await prefs.setBool('first_launch_location_asked', true);
+          // Request permission once
+          final requested = await Geolocator.requestPermission();
+          if (requested == LocationPermission.whileInUse ||
+              requested == LocationPermission.always) {
+            final pos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.high,
+              timeLimit: const Duration(seconds: 4),
+            );
+            if (mounted) {
+              setState(() {
+                _userPosition = pos;
+                _isUsingGPS = true;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Error auto-initializing location: $e");
+    }
+    // Load pharmacies with/without GPS
+    await _applyFilters(force: true);
+    if (_isUsingGPS) {
+      _startListeningLocation();
     }
   }
 
