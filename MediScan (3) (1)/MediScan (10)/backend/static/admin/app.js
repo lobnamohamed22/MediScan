@@ -274,8 +274,12 @@ function setupEventListeners() {
 
     document.getElementById('medicines-search').addEventListener('input', renderMedicines);
 
-    document.getElementById('inventory-search').addEventListener('input', renderInventory);
-    document.getElementById('inventory-filter-pharmacy').addEventListener('change', renderInventory);
+    let inventorySearchTimeout;
+    document.getElementById('inventory-search').addEventListener('input', () => {
+        clearTimeout(inventorySearchTimeout);
+        inventorySearchTimeout = setTimeout(refreshInventory, 250);
+    });
+    document.getElementById('inventory-filter-pharmacy').addEventListener('change', refreshInventory);
 
     document.getElementById('prescriptions-search').addEventListener('input', renderPrescriptions);
     document.getElementById('prescriptions-filter-status').addEventListener('change', renderPrescriptions);
@@ -844,22 +848,35 @@ async function handleMedicineSubmit(e) {
 // -------------------------------------------------------------
 async function refreshInventory() {
     try {
-        const pRes = await apiFetch(`${API_BASE}/admin/pharmacies`);
-        const pData = await pRes.json();
-        if (pData.success) {
-            state.pharmacies = pData.data || [];
-            
-            // Populate filter select
-            const filterSel = document.getElementById('inventory-filter-pharmacy');
-            filterSel.innerHTML = '<option value="">All Pharmacies</option>' + 
-                state.pharmacies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+        if (!state.pharmacies || state.pharmacies.length === 0) {
+            const pRes = await apiFetch(`${API_BASE}/admin/pharmacies`);
+            const pData = await pRes.json();
+            if (pData.success) {
+                state.pharmacies = pData.data || [];
                 
-            // Populate modal select
-            const select = document.getElementById('inv-pharmacy-id');
-            select.innerHTML = state.pharmacies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                // Populate filter select
+                const filterSel = document.getElementById('inventory-filter-pharmacy');
+                filterSel.innerHTML = '<option value="">All Pharmacies</option>' + 
+                    state.pharmacies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+                    
+                // Populate modal select
+                const select = document.getElementById('inv-pharmacy-id');
+                select.innerHTML = state.pharmacies.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            }
         }
 
-        const res = await apiFetch(`${API_BASE}/admin/inventory`);
+        const query = document.getElementById('inventory-search').value;
+        const pharmFilter = document.getElementById('inventory-filter-pharmacy').value;
+        
+        let url = `${API_BASE}/admin/inventory?limit=500`;
+        if (query) {
+            url += `&search=${encodeURIComponent(query)}`;
+        }
+        if (pharmFilter) {
+            url += `&pharmacy_id=${encodeURIComponent(pharmFilter)}`;
+        }
+
+        const res = await apiFetch(url);
         const data = await res.json();
         if (data.success) {
             state.inventory = data.data || [];

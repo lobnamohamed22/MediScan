@@ -53,9 +53,13 @@ class MedicineInventory(db.Model):
     is_prescription_required = db.Column(db.Boolean, default=True)
     last_updated = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    def to_dict(self):
-        info = MedicineInfo.query.filter(MedicineInfo.medicine_name.ilike(self.medicine_name)).first()
-        img_url = info.medicine_image if info else None
+    def to_dict(self, info_cache=None):
+        if info_cache is not None:
+            img_url = info_cache.get(self.medicine_name.lower())
+        else:
+            info = MedicineInfo.query.filter(MedicineInfo.medicine_name.ilike(self.medicine_name)).first()
+            img_url = info.medicine_image if info else None
+            
         if img_url and img_url.startswith('/'):
             from flask import request
             try:

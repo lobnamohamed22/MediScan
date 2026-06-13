@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'order_tracking_screen.dart';
+import '../config.dart';
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -22,36 +23,54 @@ class _CartScreenState extends State<CartScreen> {
     _fetchCart();
   }
 
-  Future<void> _fetchCart() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = '';
-    });
+  Future<void> _fetchCart({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    }
 
-    final res = await ApiService.getCart();
-    final walletRes = await ApiService.getWallet();
+    try {
+      final results = await Future.wait([
+        ApiService.getCart(),
+        ApiService.getWallet(),
+      ]);
+      final res = results[0];
+      final walletRes = results[1];
 
-    if (mounted) {
-      if (res['success'] == true) {
+      if (mounted) {
+        if (res['success'] == true) {
+          setState(() {
+            _cartItems = res['data']['items'] ?? [];
+            _totalPrice =
+                double.tryParse(res['data']['total_price'].toString()) ?? 0.0;
+            if (walletRes['success'] == true) {
+              _userPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
+            }
+            _isLoading = false;
+            _errorMessage = '';
+          });
+        } else {
+          setState(() {
+            if (showLoading || _cartItems.isEmpty) {
+              _errorMessage = res['message'] ?? 'Failed to load cart';
+            }
+            _isLoading = false;
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
         setState(() {
-          _cartItems = res['data']['items'] ?? [];
-          _totalPrice =
-              double.tryParse(res['data']['total_price'].toString()) ?? 0.0;
-          if (walletRes['success'] == true) {
-            _userPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
+          if (showLoading || _cartItems.isEmpty) {
+            _errorMessage = 'An error occurred: $e';
           }
-          _isLoading = false;
-        });
-      } else {
-        setState(() {
-          _errorMessage = res['message'] ?? 'Failed to load cart';
           _isLoading = false;
         });
       }
     }
   }
-
-
 
   Future<void> _updateQuantity(String cartItemId, int newQuantity) async {
     if (newQuantity < 1) {
@@ -59,10 +78,39 @@ class _CartScreenState extends State<CartScreen> {
       return;
     }
 
+    // Backup current state in case of api failure
+    final originalItems = List<dynamic>.from(_cartItems.map((item) {
+      return {
+        ...item,
+        'medicine': Map<String, dynamic>.from(item['medicine'] as Map),
+      };
+    }));
+    final originalTotal = _totalPrice;
+
+    // Optimistically update the UI quantity and total price
+    setState(() {
+      for (var item in _cartItems) {
+        if (item['cart_item_id'] == cartItemId) {
+          item['quantity'] = newQuantity;
+        }
+      }
+      _totalPrice = _cartItems.fold(0.0, (sum, item) {
+        final price = double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
+        final qty = int.tryParse(item['quantity'].toString()) ?? 1;
+        return sum + (price * qty);
+      });
+    });
+
     final res = await ApiService.updateCartItem(cartItemId, newQuantity);
     if (res['success'] == true) {
-      _fetchCart();
+      // Background reload to ensure client/server state matches
+      _fetchCart(showLoading: false);
     } else {
+      // Revert changes on failure
+      setState(() {
+        _cartItems = originalItems;
+        _totalPrice = originalTotal;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -73,15 +121,40 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _removeItem(String cartItemId) async {
+    // Backup current state in case of api failure
+    final originalItems = List<dynamic>.from(_cartItems.map((item) {
+      return {
+        ...item,
+        'medicine': Map<String, dynamic>.from(item['medicine'] as Map),
+      };
+    }));
+    final originalTotal = _totalPrice;
+
+    // Optimistically remove from list and update total price
+    setState(() {
+      _cartItems.removeWhere((item) => item['cart_item_id'] == cartItemId);
+      _totalPrice = _cartItems.fold(0.0, (sum, item) {
+        final price = double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
+        final qty = int.tryParse(item['quantity'].toString()) ?? 1;
+        return sum + (price * qty);
+      });
+    });
+
     final res = await ApiService.removeCartItem(cartItemId);
     if (res['success'] == true) {
-      _fetchCart();
+      // Background reload to sync client state
+      _fetchCart(showLoading: false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Item removed from cart')),
         );
       }
     } else {
+      // Revert on failure
+      setState(() {
+        _cartItems = originalItems;
+        _totalPrice = originalTotal;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(res['message'] ?? 'Failed to remove item')),
@@ -178,6 +251,13 @@ class _CartScreenState extends State<CartScreen> {
         final quantity = item['quantity'];
         final price = medicine['price'];
 
+        String imageUrl = medicine['image_url'] ?? '';
+        if (imageUrl.contains('127.0.0.1') || imageUrl.contains('localhost')) {
+          imageUrl = imageUrl.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
+        } else if (imageUrl.startsWith('/')) {
+          imageUrl = '${Config.baseUrl}$imageUrl';
+        }
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           shape:
@@ -193,9 +273,8 @@ class _CartScreenState extends State<CartScreen> {
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: medicine['image_url'] != null &&
-                          medicine['image_url'].toString().isNotEmpty
-                      ? Image.network(medicine['image_url'],
+                  child: imageUrl.isNotEmpty
+                      ? Image.network(imageUrl,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) =>
                               const Icon(Icons.medication, color: Colors.grey))

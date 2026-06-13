@@ -44,6 +44,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
 
   bool _isSimulating = false;
   LatLng _deviceLocation = const LatLng(29.8514, 31.3428);
+  List<LatLng> _routePoints = [];
 
   // Animation properties
   LatLng _oldDriverPos = const LatLng(29.8514, 31.3428); // default pharmacy location
@@ -158,6 +159,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
         if (res['success'] == true) {
           _trackingData = res['data'];
           _currentStatus = _trackingData?['status'] ?? widget.status;
+          
+          final routeData = _trackingData?['route_points'] as List?;
+          if (routeData != null) {
+            _routePoints = routeData.map((pt) {
+              final lat = double.tryParse(pt[0].toString()) ?? 0.0;
+              final lng = double.tryParse(pt[1].toString()) ?? 0.0;
+              return LatLng(lat, lng);
+            }).toList();
+          }
           
           final lat = _trackingData?['delivery_lat'] != null
               ? double.tryParse(_trackingData!['delivery_lat'].toString())
@@ -424,7 +434,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with TickerPr
                     PolylineLayer(
                       polylines: [
                         Polyline(
-                          points: [pharmacyPos, _currentDriverPos, customerPos],
+                          points: _routePoints.isNotEmpty
+                              ? _routePoints
+                              : [pharmacyPos, _currentDriverPos, customerPos],
                           strokeWidth: 4.5,
                           color: Colors.blueAccent,
                           borderColor: Colors.blue.shade900,

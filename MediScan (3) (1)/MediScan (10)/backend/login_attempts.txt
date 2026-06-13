@@ -1,0 +1,3 @@
+Email: lolo@gmail.com | Password: 123456 | UserExists: True | PasswordMatch: False
+Email: lolo@gmail.com | Password: 123456 | UserExists: True | PasswordMatch: True
+Email: lolo@gmail.com | Password: 123456 | UserExists: True | PasswordMatch: True

@@ -54,7 +54,9 @@ class Medicine {
     }
 
     String imgUrl = json['medicine_image'] ?? json['imageUrl'] ?? '';
-    if (imgUrl.startsWith('/')) {
+    if (imgUrl.contains('127.0.0.1') || imgUrl.contains('localhost')) {
+      imgUrl = imgUrl.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
+    } else if (imgUrl.startsWith('/')) {
       imgUrl = '${Config.baseUrl}$imgUrl';
     }
 

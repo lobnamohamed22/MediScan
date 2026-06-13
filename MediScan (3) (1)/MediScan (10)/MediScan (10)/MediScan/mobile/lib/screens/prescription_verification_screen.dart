@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
 
 class PrescriptionVerificationScreen extends StatefulWidget {
   final List<Map<String, dynamic>> initialMedicines;
@@ -23,20 +22,11 @@ class _PrescriptionVerificationScreenState
     super.initState();
     _medicinesData = widget.initialMedicines.map((m) {
       final name = m['name']?.toString() ?? '';
-      final image = m['image']?.toString() ?? '';
       return {
         'name': name,
-        'image': image,
         'controller': TextEditingController(text: name),
       };
     }).toList();
-
-    // Proactively query images for medicines that have missing/empty images initially
-    for (int i = 0; i < _medicinesData.length; i++) {
-      if (_medicinesData[i]['image'].toString().isEmpty) {
-        _fetchImageForName(i, _medicinesData[i]['name']);
-      }
-    }
   }
 
   @override
@@ -48,73 +38,20 @@ class _PrescriptionVerificationScreenState
     super.dispose();
   }
 
-  Future<void> _fetchImageForName(int index, String name) async {
-    final trimmed = name.trim();
-    if (trimmed.isEmpty) {
-      if (mounted) {
-        setState(() {
-          _medicinesData[index]['image'] = '';
-        });
-      }
-      return;
-    }
-
-    try {
-      final res = await ApiService.searchMedicines(trimmed);
-      if (res['success'] == true && mounted) {
-        final List data = res['data'] ?? [];
-        if (data.isNotEmpty) {
-          Map<String, dynamic>? match;
-          // First, try exact case-insensitive match
-          for (var m in data) {
-            final dbName = m['medicine_name'].toString().toLowerCase().trim();
-            final searchName = trimmed.toLowerCase();
-            if (dbName == searchName) {
-              match = Map<String, dynamic>.from(m);
-              break;
-            }
-          }
-          // If no exact match, try high-confidence substring match
-          if (match == null) {
-            for (var m in data) {
-              final dbName = m['medicine_name'].toString().toLowerCase().trim();
-              final searchName = trimmed.toLowerCase();
-              if (dbName.contains(searchName) || searchName.contains(dbName)) {
-                match = Map<String, dynamic>.from(m);
-                break;
-              }
-            }
-          }
-          
-          if (match != null) {
-            final imgUrl = match['medicine_image']?.toString() ?? '';
-            setState(() {
-              _medicinesData[index]['image'] = imgUrl;
-            });
-          } else {
-            setState(() {
-              _medicinesData[index]['image'] = '';
-            });
-          }
-        } else {
-          setState(() {
-            _medicinesData[index]['image'] = '';
-          });
-        }
-      }
-    } catch (e) {
-      debugPrint("Error fetching medicine image dynamically: $e");
-    }
-  }
-
   void _addMedicine() {
-    setState(() {
-      _medicinesData.add({
-        'name': '',
-        'image': '',
-        'controller': TextEditingController(),
+    print("[DEBUG] _addMedicine called. Old length: ${_medicinesData.length}");
+    try {
+      setState(() {
+        _medicinesData.add({
+          'name': '',
+          'controller': TextEditingController(),
+        });
       });
-    });
+      print("[DEBUG] _addMedicine done. New length: ${_medicinesData.length}");
+    } catch (e, stack) {
+      print("[DEBUG] _addMedicine error: $e");
+      print(stack);
+    }
   }
 
   void _removeMedicine(int index) {
@@ -146,7 +83,9 @@ class _PrescriptionVerificationScreenState
 
   @override
   Widget build(BuildContext context) {
+    print("[DEBUG] build called. Medicines count: ${_medicinesData.length}");
     return Scaffold(
+
       appBar: AppBar(
         title: const Text('Verify Prescription'),
         centerTitle: true,
@@ -167,7 +106,6 @@ class _PrescriptionVerificationScreenState
               itemCount: _medicinesData.length,
               itemBuilder: (context, index) {
                 final item = _medicinesData[index];
-                final String imageUrl = item['image'] ?? '';
                 final controller = item['controller'] as TextEditingController;
 
                 return Padding(
@@ -175,30 +113,11 @@ class _PrescriptionVerificationScreenState
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
                     children: [
-                      // ClipRRect rounded medicine thumbnail next to name
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 48,
-                          height: 48,
-                          color: Colors.grey[200],
-                          child: imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Icon(Icons.medication, color: Colors.grey),
-                                )
-                              : const Icon(Icons.medication, color: Colors.grey),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: TextField(
                           controller: controller,
                           onChanged: (val) {
                             item['name'] = val;
-                            _fetchImageForName(index, val);
                           },
                           decoration: InputDecoration(
                             labelText: 'Medicine ${index + 1}',
@@ -210,7 +129,7 @@ class _PrescriptionVerificationScreenState
                       ),
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.delete, color: Colors.red),
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
                         onPressed: () => _removeMedicine(index),
                       ),
                     ],

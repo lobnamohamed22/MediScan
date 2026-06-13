@@ -29,6 +29,7 @@ class _AssignedOrdersScreenState extends State<AssignedOrdersScreen> {
 
     try {
       final result = await ApiService.getDeliveryAssignedOrders();
+      debugPrint('[AssignedOrdersScreen] ApiService.getDeliveryAssignedOrders result: $result');
       if (result['success'] == true) {
         setState(() {
           _orders = result['data'] ?? [];
@@ -38,9 +39,11 @@ class _AssignedOrdersScreenState extends State<AssignedOrdersScreen> {
           _errorMessage = result['message'] ?? 'Failed to load assigned orders.';
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[AssignedOrdersScreen] Error fetching assigned orders: $e');
+      debugPrint('[AssignedOrdersScreen] Stack trace: $stackTrace');
       setState(() {
-        _errorMessage = 'Network error occurred.';
+        _errorMessage = 'Unexpected error: $e';
       });
     } finally {
       setState(() {

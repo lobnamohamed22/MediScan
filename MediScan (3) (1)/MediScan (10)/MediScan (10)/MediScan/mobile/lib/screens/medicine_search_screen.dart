@@ -18,6 +18,7 @@ class _MedicineSearchScreenState extends State<MedicineSearchScreen> {
   bool _isLoading = false;
   String _errorMessage = '';
   Timer? _debounce;
+  String _activeSearchQuery = '';
 
   @override
   void initState() {
@@ -34,11 +35,14 @@ class _MedicineSearchScreenState extends State<MedicineSearchScreen> {
   }
 
   void _onSearchChanged() {
+    final query = _searchController.text.trim();
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (_searchController.text.trim().isNotEmpty) {
-        _searchMedicines(_searchController.text.trim());
+      if (query.isNotEmpty) {
+        _activeSearchQuery = query;
+        _searchMedicines(query);
       } else {
+        _activeSearchQuery = '';
         setState(() {
           _filteredMedicines = [];
           _errorMessage = '';
@@ -56,6 +60,9 @@ class _MedicineSearchScreenState extends State<MedicineSearchScreen> {
     final response = await ApiService.searchMedicines(query);
 
     if (!mounted) return;
+
+    // Discard results if the user has already initiated a newer search
+    if (query != _activeSearchQuery) return;
 
     if (response['success'] == true) {
       final List<dynamic> data = response['data'] ?? [];

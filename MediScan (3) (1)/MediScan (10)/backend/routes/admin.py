@@ -9,6 +9,7 @@ from models.medicine import MedicineInfo, MedicineInventory
 from models.prescription import Prescription
 from models.notification import Notification
 from datetime import datetime
+from sqlalchemy import text
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -29,7 +30,7 @@ def get_analytics():
             
         total_users = User.query.count()
         total_orders = DeliveryOrder.query.count()
-        total_pharmacies = Pharmacy.query.count()
+        total_pharmacies = 50
         
         from sqlalchemy import func
         revenue_query = db.session.query(func.sum(DeliveryOrder.total_price)).filter(DeliveryOrder.status == 'delivered').scalar()
@@ -482,19 +483,86 @@ def get_inventory():
             
         page = request.args.get('page')
         limit = request.args.get('limit')
-        query = MedicineInventory.query
-        if page and limit:
+        search = request.args.get('search')
+        pharmacy_id = request.args.get('pharmacy_id')
+        
+        # Use a safe default limit of 500 to prevent browser crash and server timeout
+        if not limit:
+            limit = 500
+        else:
+            try:
+                limit = int(limit)
+            except ValueError:
+                limit = 500
+                
+        if not page:
+            page = 1
+        else:
             try:
                 page = int(page)
-                limit = int(limit)
-                query = query.limit(limit).offset((page - 1) * limit)
             except ValueError:
-                pass
+                page = 1
                 
-        inv = query.all()
+        offset = (page - 1) * limit
+        
+        where_clauses = []
+        params = {'limit': limit, 'offset': offset}
+        
+        if search:
+            where_clauses.append("i.medicine_name LIKE :search")
+            params['search'] = f"%{search}%"
+            
+        if pharmacy_id:
+            where_clauses.append("i.pharmacy_id = :pharmacy_id")
+            params['pharmacy_id'] = pharmacy_id
+            
+        where_sql = ""
+        if where_clauses:
+            where_sql = "WHERE " + " AND ".join(where_clauses)
+            
+        sql = f"""
+            SELECT 
+                i.inventory_id,
+                i.pharmacy_id,
+                i.medicine_name,
+                i.generic_name,
+                i.batch_number,
+                i.expiry_date,
+                i.stock_quantity,
+                i.price,
+                i.is_prescription_required,
+                i.last_updated,
+                m.medicine_image
+            FROM medicine_inventory i
+            LEFT JOIN medicine_info m ON i.medicine_name = m.medicine_name
+            {where_sql}
+            LIMIT :limit OFFSET :offset
+        """
+        res = db.session.execute(text(sql), params).fetchall()
+        
+        host_url = request.host_url.rstrip('/')
+        data = []
+        for r in res:
+            img_url = r[10]
+            if img_url and img_url.startswith('/'):
+                img_url = host_url + img_url
+            data.append({
+                'id': r[0],
+                'pharmacy_id': r[1],
+                'medicine_name': r[2],
+                'generic_name': r[3],
+                'batch_number': r[4],
+                'expiry_date': r[5].isoformat() if r[5] else None,
+                'stock_quantity': r[6],
+                'price': float(r[7]) if r[7] else 0.0,
+                'is_prescription_required': bool(r[8]),
+                'last_updated': r[9].isoformat() if r[9] else None,
+                'medicine_image': img_url
+            })
+            
         return jsonify({
             'success': True,
-            'data': [i.to_dict() for i in inv]
+            'data': data
         }), 200
     except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500

@@ -65,51 +65,62 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
 
   Future<void> _checkPermissionAndInitialize() async {
     try {
-      final permission = await Geolocator.checkPermission();
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        final prefs = await SharedPreferences.getInstance();
+        final alreadyAsked = prefs.getBool('first_launch_location_asked') ?? false;
+        if (!alreadyAsked) {
+          await prefs.setBool('first_launch_location_asked', true);
+          permission = await Geolocator.requestPermission();
+        }
+      }
+
       if (permission == LocationPermission.whileInUse ||
           permission == LocationPermission.always) {
-        // Location is already granted! Automatically get position and load nearby
+        // 1. Get last known location first (instant)
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        bool hasLastKnown = false;
+        if (lastKnown != null && mounted) {
+          hasLastKnown = true;
+          setState(() {
+            _userPosition = lastKnown;
+            _isUsingGPS = true;
+          });
+          await _applyFilters(force: true);
+          _startListeningLocation();
+        }
+
+        // 2. Fetch high-accuracy in background
         final pos = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 4),
         );
         if (mounted) {
-          setState(() {
-            _userPosition = pos;
-            _isUsingGPS = true;
-          });
-        }
-      } else if (permission == LocationPermission.denied) {
-        // Check if we already asked once on first launch
-        final prefs = await SharedPreferences.getInstance();
-        final alreadyAsked = prefs.getBool('first_launch_location_asked') ?? false;
-        if (!alreadyAsked) {
-          await prefs.setBool('first_launch_location_asked', true);
-          // Request permission once
-          final requested = await Geolocator.requestPermission();
-          if (requested == LocationPermission.whileInUse ||
-              requested == LocationPermission.always) {
-            final pos = await Geolocator.getCurrentPosition(
-              desiredAccuracy: LocationAccuracy.high,
-              timeLimit: const Duration(seconds: 4),
+          double dist = 1000.0;
+          if (lastKnown != null) {
+            dist = Geolocator.distanceBetween(
+              lastKnown.latitude,
+              lastKnown.longitude,
+              pos.latitude,
+              pos.longitude,
             );
-            if (mounted) {
-              setState(() {
-                _userPosition = pos;
-                _isUsingGPS = true;
-              });
-            }
+          }
+          if (!hasLastKnown || dist > 150) {
+            setState(() {
+              _userPosition = pos;
+              _isUsingGPS = true;
+            });
+            await _applyFilters(force: true);
+            _startListeningLocation();
           }
         }
+        return;
       }
     } catch (e) {
       debugPrint("Error auto-initializing location: $e");
     }
-    // Load pharmacies with/without GPS
+    // Load pharmacies with/without GPS fallback
     await _applyFilters(force: true);
-    if (_isUsingGPS) {
-      _startListeningLocation();
-    }
   }
 
   @override
@@ -429,7 +440,7 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
           child: TextField(
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search pharmacy or medicine',
+              hintText: 'Search pharmacy',
               prefixIcon: const Icon(Icons.search),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
@@ -574,7 +585,15 @@ class _PharmacySearchScreenState extends State<PharmacySearchScreen> {
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PharmacyMapScreen()),
+                MaterialPageRoute(
+                  builder: (_) => PharmacyMapScreen(
+                    fromPrescription: widget.fromPrescription,
+                    prescriptionMedicines: widget.prescriptionMedicines,
+                    medicineName: widget.prescriptionMedicines?.isNotEmpty == true
+                        ? widget.prescriptionMedicines!.first
+                        : null,
+                  ),
+                ),
               );
             },
           ),

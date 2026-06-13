@@ -46,6 +46,83 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     }
   }
 
+  int _min3(int a, int b, int c) {
+    int m = a;
+    if (b < m) m = b;
+    if (c < m) m = c;
+    return m;
+  }
+
+  int _levenshteinDistance(String s, String t) {
+    if (s == t) return 0;
+    if (s.isEmpty) return t.length;
+    if (t.isEmpty) return s.length;
+    
+    List<int> v0 = List<int>.generate(t.length + 1, (i) => i);
+    List<int> v1 = List<int>.filled(t.length + 1, 0);
+    
+    for (int i = 0; i < s.length; i++) {
+      v1[0] = i + 1;
+      for (int j = 0; j < t.length; j++) {
+        final cost = s[i] == t[j] ? 0 : 1;
+        v1[j + 1] = _min3(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+      }
+      v0 = List<int>.from(v1);
+    }
+    return v0[t.length];
+  }
+
+  double calculateSimilarity(String s1, String s2) {
+    s1 = s1.toLowerCase().trim();
+    s2 = s2.toLowerCase().trim();
+    
+    if (s1 == s2) return 1.0;
+    if (s1.isEmpty || s2.isEmpty) return 0.0;
+    
+    // Clean common suffixes/units (mg, g, ml, etc.) and strengths
+    final cleanReg = RegExp(r'\b(?:\d+\.?\d*\s*)?(mg|g|ml|cream|gel|injection|inhaler|tablets|tablet|capsules|capsule)\b');
+    String clean1 = s1.replaceAll(cleanReg, '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    String clean2 = s2.replaceAll(cleanReg, '').replaceAll(RegExp(r'\s+'), ' ').trim();
+    
+    if (clean1 == clean2) return 1.0;
+    if (clean1.isEmpty || clean2.isEmpty) return 0.0;
+    
+    // Direct substring check on clean names
+    if (clean1.contains(clean2) || clean2.contains(clean1)) {
+      final int commonLen = clean1.length < clean2.length ? clean1.length : clean2.length;
+      final int maxLen = clean1.length > clean2.length ? clean1.length : clean2.length;
+      return commonLen / maxLen;
+    }
+    
+    final int distance = _levenshteinDistance(clean1, clean2);
+    final int maxLength = clean1.length > clean2.length ? clean1.length : clean2.length;
+    double score = 1.0 - (distance / maxLength);
+
+    // Try to find if raw strength matches (e.g. 90 vs 90)
+    final numReg = RegExp(r'\d+');
+    final m1 = numReg.firstMatch(s1)?.group(0);
+    final m2 = numReg.firstMatch(s2)?.group(0);
+    if (m1 != null && m2 != null && m1 == m2 && score >= 0.70) {
+      score = score + 0.15; // Give strength bonus
+      if (score > 1.0) score = 1.0;
+    }
+    return score;
+  }
+
+  String getImageUrl(String? imgPath) {
+    if (imgPath == null || imgPath.isEmpty) {
+      return '${ApiService.baseUrl.replaceAll("/api", "")}/uploads/medicines/generic_pill.png';
+    }
+    String path = imgPath.toString();
+    if (path.contains('127.0.0.1') || path.contains('localhost')) {
+      path = path.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
+    } else if (!path.startsWith('http')) {
+      final base = ApiService.baseUrl.replaceAll('/api', '');
+      path = path.startsWith('/') ? '$base$path' : '$base/$path';
+    }
+    return path;
+  }
+
   Future<void> _fetchPharmacyInventory() async {
     setState(() => _isLoadingPrices = true);
     try {
@@ -53,70 +130,73 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (res['success'] == true) {
         final List data = res['data'] ?? [];
         setState(() {
-          _resolvedMedicines = data.map<Map<String, dynamic>>((item) {
-            final String medName = item['medicine_name'] ?? '';
-            int qty = 0;
-            bool isInPassed = false;
-            for (var m in widget.medicines) {
-              String name = m;
-              int mq = 1;
-              if (m.contains(" x") && RegExp(r' x\d+$').hasMatch(m)) {
-                final parts = m.split(RegExp(r' x(?=\d+$)'));
-                if (parts.length == 2) {
-                  name = parts[0];
-                  mq = int.tryParse(parts[1]) ?? 1;
-                }
-              }
-              if (name.toLowerCase().trim() == medName.toLowerCase().trim()) {
-                qty = mq;
-                isInPassed = true;
-                break;
+          final List<Map<String, dynamic>> matchedList = [];
+          
+          for (var m in widget.medicines) {
+            String cleanScannedName = m;
+            int qty = 1;
+            if (m.contains(" x") && RegExp(r' x\d+$').hasMatch(m)) {
+              final parts = m.split(RegExp(r' x(?=\d+$)'));
+              if (parts.length == 2) {
+                cleanScannedName = parts[0];
+                qty = int.tryParse(parts[1]) ?? 1;
               }
             }
-
-            return {
-              'original_name': medName,
-              'name': medName,
-              'medicine_image': item['medicine_image'] ?? '',
-              'quantity': isInPassed ? qty : 0,
-              'price': double.tryParse(item['price']?.toString() ?? '0.0') ?? 0.0,
-              'matched': true,
-              'available': (item['stock_quantity'] ?? 0) > 0,
-              'stock': item['stock_quantity'] ?? 0,
-            };
-          }).toList();
-
-          if (_resolvedMedicines.isEmpty) {
-            _fallbackToDefaults();
-          } else {
-            // Sort so that pre-selected medicines (quantity > 0) are at the top
-            _resolvedMedicines.sort((a, b) {
-              final int qa = a['quantity'] ?? 0;
-              final int qb = b['quantity'] ?? 0;
-              if (qa > 0 && qb == 0) return -1;
-              if (qa == 0 && qb > 0) return 1;
-              final String na = a['name'] ?? '';
-              final String nb = b['name'] ?? '';
-              return na.compareTo(nb);
-            });
-
-            // Recalculate total price
-            double newTotal = 0.0;
-            for (var m in _resolvedMedicines) {
-              final price = m['price'] ?? 0.0;
-              final q = m['quantity'] ?? 0;
-              if (m['available'] == true) {
-                newTotal += price * q;
+            
+            cleanScannedName = cleanScannedName.trim();
+            
+            dynamic bestItem;
+            double bestScore = 0.0;
+            
+            for (var item in data) {
+              final String medName = item['medicine_name'] ?? '';
+              final double score = calculateSimilarity(cleanScannedName, medName);
+              if (score > bestScore) {
+                bestScore = score;
+                bestItem = item;
               }
             }
-            _calculatedTotal = newTotal;
-            _isLoadingPrices = false;
+            
+            // 0.70 threshold for fuzzy matching
+            if (bestScore >= 0.70 && bestItem != null) {
+              final String matchedMedName = bestItem['medicine_name'] ?? '';
+              final double price = double.tryParse(bestItem['price']?.toString() ?? '0.0') ?? 0.0;
+              final int stock = bestItem['stock_quantity'] ?? 0;
+              final bool available = stock > 0;
+              
+              if (available) {
+                matchedList.add({
+                  'original_name': m,
+                  'name': matchedMedName,
+                  'medicine_image': bestItem['medicine_image'] ?? '',
+                  'quantity': qty,
+                  'price': price,
+                  'matched': true,
+                  'available': true,
+                  'stock': stock,
+                });
+              }
+            }
           }
+          
+          _resolvedMedicines = matchedList;
+
+          // Recalculate total price
+          double newTotal = 0.0;
+          for (var m in _resolvedMedicines) {
+            final price = m['price'] ?? 0.0;
+            final q = m['quantity'] ?? 0;
+            newTotal += price * q;
+          }
+          _calculatedTotal = newTotal;
+          _isLoadingPrices = false;
         });
       } else {
         _fallbackToDefaults();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[OrderDetailsScreen] Error in _fetchPharmacyInventory: $e');
+      print(stackTrace);
       _fallbackToDefaults();
     }
   }
@@ -144,7 +224,9 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       } else {
         _fallbackToDefaults();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[OrderDetailsScreen] Error in _fetchPrices: $e');
+      print(stackTrace);
       _fallbackToDefaults();
     }
   }
@@ -446,7 +528,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                                 child: m['medicine_image'] != null &&
                                         m['medicine_image'].toString().isNotEmpty
                                     ? Image.network(
-                                        m['medicine_image'].toString(),
+                                        getImageUrl(m['medicine_image'].toString()),
                                         fit: BoxFit.cover,
                                         errorBuilder: (context, error, stackTrace) =>
                                             const Icon(
@@ -461,7 +543,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               ),
                             ),
                             title: Text(
-                              displayTitle,
+                              matched ? name : displayTitle,
                               style: TextStyle(
                                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                               ),
@@ -470,55 +552,71 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const SizedBox(height: 4),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    if (widget.status == 'preview' || widget.status == 'pending') ...[
+                                Text(
+                                  'Unit Price: ${price.toStringAsFixed(2)} EGP',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                if (isDifferentMatch)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      'Scanned as: $displayTitle',
+                                      style: TextStyle(
+                                        color: Colors.grey.shade500,
+                                        fontSize: 11,
+                                        fontStyle: FontStyle.italic,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 6),
+                                if (widget.status == 'preview' || widget.status == 'pending')
+                                  Row(
+                                    children: [
                                       IconButton(
                                         constraints: const BoxConstraints(),
                                         padding: EdgeInsets.zero,
                                         icon: Icon(
                                           qty > 1 ? Icons.remove_circle_outline : Icons.delete_outline,
-                                          size: 20,
+                                          size: 22,
                                           color: isSelected ? Colors.red : Colors.grey,
                                         ),
                                         onPressed: isSelected
                                             ? () => _updateQuantity(index, qty - 1)
                                             : null,
                                       ),
-                                      Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                      const SizedBox(width: 8),
+                                      Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                                      const SizedBox(width: 8),
                                       IconButton(
                                         constraints: const BoxConstraints(),
                                         padding: EdgeInsets.zero,
-                                        icon: const Icon(Icons.add_circle_outline, size: 20, color: Colors.green),
+                                        icon: const Icon(Icons.add_circle_outline, size: 22, color: Colors.green),
                                         onPressed: () {
                                           _updateQuantity(index, qty + 1);
                                         },
                                       ),
-                                    ] else ...[
-                                      Text('Qty: $qty • ${price.toStringAsFixed(2)} EGP per item', style: const TextStyle(color: Colors.grey)),
                                     ],
-                                  ],
-                                ),
-                                if (isDifferentMatch)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 6),
-                                    child: Text(
-                                      'System Match: $name',
-                                      style: const TextStyle(
-                                        color: Colors.green,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
+                                  )
+                                else
+                                  Text(
+                                    'Qty: $qty',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.black87,
                                     ),
                                   ),
                               ],
                             ),
                             trailing: Text(
                               '${(price * qty).toStringAsFixed(2)} EGP',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: Colors.teal,
+                              ),
                             ),
                           ),
                         );

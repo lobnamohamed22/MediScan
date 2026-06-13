@@ -26,37 +26,47 @@ class _PrescriptionScanScreenState extends State<PrescriptionScanScreen> {
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
-    if (!mounted) return;
 
     setState(() {
       _isProcessing = true;
       _showResult = false;
     });
 
-    final bytes = await image.readAsBytes();
-    final filename = image.name.isNotEmpty ? image.name : 'upload.jpg';
-    final result = await ApiService.uploadPrescription(bytes, filename);
+    try {
+      final bytes = await image.readAsBytes();
+      final result = await ApiService.uploadPrescription(bytes, image.name);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result['success'] == true) {
-      setState(() {
-        _prescriptionId = result['prescription_id']?.toString() ?? '';
-        final List medicinesData = result['medicines'] ?? [];
-        _resolvedMeds = medicinesData;
-        _medicines = medicinesData
-            .map((m) => m['medicine_name']?.toString() ?? 'Unknown')
-            .toList();
-        _ocrResult = "Extracted ${_resolvedMeds.length} medicines";
-        _isProcessing = false;
-        _showResult = true;
-      });
-    } else {
+      if (result['success'] == true) {
+        setState(() {
+          _prescriptionId = result['prescription_id']?.toString() ?? '';
+          _resolvedMeds = result['medicines'] ?? [];
+          _medicines = _resolvedMeds
+              .map((m) => m['medicine_name']?.toString() ?? '')
+              .where((name) => name.isNotEmpty)
+              .toList();
+          _ocrResult = "Extracted ${_medicines.length} medicines";
+          _isProcessing = false;
+          _showResult = true;
+        });
+      } else {
+        setState(() {
+          _isProcessing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message'] ?? 'Error scanning prescription'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       setState(() {
         _isProcessing = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Upload failed')),
+        SnackBar(content: Text('Failed to process image: $e')),
       );
     }
   }
@@ -81,7 +91,24 @@ class _PrescriptionScanScreenState extends State<PrescriptionScanScreen> {
       if (!mounted) return;
 
       if (result['success'] == true) {
-        Navigator.pushReplacementNamed(context, '/history');
+        setState(() {
+          _resolvedMeds = verifiedList.map((name) {
+            final oldMatch = _resolvedMeds.firstWhere(
+              (m) => m['medicine_name'] == name,
+              orElse: () => <String, dynamic>{},
+            );
+            return {
+              'medicine_name': name,
+              'medicine_image': oldMatch['medicine_image']?.toString() ?? '',
+            };
+          }).toList();
+          _medicines = verifiedList;
+          _ocrResult = "Extracted ${_resolvedMeds.length} medicines";
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Medicines verified successfully.')),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

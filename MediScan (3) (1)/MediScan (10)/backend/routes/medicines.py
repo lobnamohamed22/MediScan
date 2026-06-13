@@ -325,48 +325,36 @@ def resolve_prices():
                 })
                 continue
 
-            # 3. If direct match not found, do highly restricted fuzzy match (cutoff=0.85) to avoid duplicate entries
-            first_char = name_clean[0] if name_clean else ''
-            
-            if first_char:
-                if pharmacy_id:
-                    fuzzy_candidates = db.session.query(
-                        MedicineInventory.medicine_name,
-                        MedicineInventory.stock_quantity,
-                        MedicineInventory.price
-                    ).filter(
-                        MedicineInventory.pharmacy_id == pharmacy_id,
-                        MedicineInventory.medicine_name.like(f"{first_char}%")
-                    ).all()
-                else:
-                    fuzzy_candidates = db.session.query(
-                        MedicineInventory.medicine_name,
-                        db.func.sum(MedicineInventory.stock_quantity).label('total_stock'),
-                        db.func.avg(MedicineInventory.price).label('avg_price')
-                    ).filter(
-                        MedicineInventory.medicine_name.like(f"{first_char}%")
-                    ).group_by(MedicineInventory.medicine_name).all()
+            # 3. If direct match not found, do smart similarity match (cutoff=0.70)
+            from routes.prescriptions import calculate_similarity
+            if pharmacy_id:
+                fuzzy_candidates = db.session.query(
+                    MedicineInventory.medicine_name,
+                    MedicineInventory.stock_quantity,
+                    MedicineInventory.price
+                ).filter(
+                    MedicineInventory.pharmacy_id == pharmacy_id
+                ).all()
             else:
-                fuzzy_candidates = []
+                fuzzy_candidates = db.session.query(
+                    MedicineInventory.medicine_name,
+                    db.func.sum(MedicineInventory.stock_quantity).label('total_stock'),
+                    db.func.avg(MedicineInventory.price).label('avg_price')
+                ).group_by(MedicineInventory.medicine_name).all()
 
-            import difflib
             best_fuzzy_match = None
             best_ratio = 0.0
             best_fuzzy_info = None
 
-            suffixes_pat = r'\b(?:\d+\.?\d*\s*)?(mg|g|ml|cream|gel|injection|inhaler|tablets|tablet|capsules|capsule)\b'
-            clean_scanned = re.sub(suffixes_pat, '', name_clean.lower()).strip()
-
             for c in fuzzy_candidates:
                 c_name = c[0]
-                c_clean = re.sub(suffixes_pat, '', c_name.lower()).strip()
-                ratio = difflib.SequenceMatcher(None, clean_scanned, c_clean).ratio()
+                ratio = calculate_similarity(name_clean, c_name)
                 if ratio > best_ratio:
                     best_ratio = ratio
                     best_fuzzy_match = c_name
                     best_fuzzy_info = c
 
-            if best_ratio >= 0.85 and best_fuzzy_match:
+            if best_ratio >= 0.70 and best_fuzzy_match:
                 # Highly confident fuzzy match exists in database! Reuse it to prevent duplicates
                 total_stock = int(best_fuzzy_info[1]) if best_fuzzy_info[1] is not None else 0
                 avg_price = float(best_fuzzy_info[2]) if best_fuzzy_info[2] is not None else 0.0

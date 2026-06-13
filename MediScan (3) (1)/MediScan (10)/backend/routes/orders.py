@@ -12,6 +12,32 @@ from models.order_message import OrderMessage
 
 orders_bp = Blueprint('orders', __name__)
 
+def generate_delivery_route_11_points(start_lat, start_lng, end_lat, end_lng):
+    points = []
+    points.append([start_lat, start_lng])
+    
+    d_lat = end_lat - start_lat
+    d_lng = end_lng - start_lng
+    
+    # Perpendicular vector to create street bends
+    perp_lat = -d_lng
+    perp_lng = d_lat
+    
+    # We will define perp offsets for indices 1 to 9
+    # This creates a realistic street-grid path with turns
+    perp_scales = [0.0, 0.1, 0.15, 0.05, -0.1, -0.15, -0.05, 0.08, 0.04, 0.0]
+    
+    for i in range(1, 10):
+        fraction = i / 10.0
+        perp_scale = perp_scales[i]
+        lat = start_lat + d_lat * fraction + perp_lat * perp_scale
+        lng = start_lng + d_lng * fraction + perp_lng * perp_scale
+        points.append([lat, lng])
+        
+    points.append([end_lat, end_lng])
+    return points
+
+
 # -------------------------------
 # 1. CREATE ORDER
 # -------------------------------
@@ -96,9 +122,13 @@ def create_order():
 def get_orders():
     try:
         user_id = get_jwt_identity()
+        print(f"[backend] GET /api/orders - Fetching orders for user_id: {user_id}", flush=True)
+        
         results = db.session.query(DeliveryOrder, Pharmacy.name).outerjoin(
             Pharmacy, DeliveryOrder.pharmacy_id == Pharmacy.pharmacy_id
         ).filter(DeliveryOrder.user_id == user_id).all()
+        
+        print(f"[backend] GET /api/orders - Found {len(results)} orders for user_id: {user_id}", flush=True)
         
         data = []
         for order, pharm_name in results:
@@ -123,6 +153,9 @@ def get_orders():
             'data': data
         }), 200
     except Exception as e:
+        print(f"[backend] GET /api/orders - Exception: {e}", flush=True)
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': str(e)}), 500
 
 # -------------------------------
@@ -138,16 +171,31 @@ def get_tracking(order_id):
             
         driver_name = None
         driver_phone = None
+        is_simulated = False
         if order.delivery_person_id:
             driver = User.query.get(order.delivery_person_id)
             if driver:
                 driver_name = driver.full_name
                 driver_phone = driver.phone
+                if driver.email == 'driver_sim@mediscan.com':
+                    is_simulated = True
+                    
+        if driver_name and ('sim' in driver_name.lower() or driver_name == 'Speedy Delivery (Sim)'):
+            driver_name = "Mohamed Ahmed"
                 
         pharmacy = Pharmacy.query.get(order.pharmacy_id)
         pharm_name = pharmacy.name if pharmacy else "Pharmacy"
         pharm_lat = float(pharmacy.latitude) if (pharmacy and pharmacy.latitude) else 30.0544
         pharm_lng = float(pharmacy.longitude) if (pharmacy and pharmacy.longitude) else 31.2457
+        
+        cust_lat = float(order.customer_lat) if order.customer_lat is not None else 30.0444
+        cust_lng = float(order.customer_lng) if order.customer_lng is not None else 31.2357
+        
+        if is_simulated:
+            pharm_lat = cust_lat + 0.02
+            pharm_lng = cust_lng + 0.02
+            
+        route_points = generate_delivery_route_11_points(pharm_lat, pharm_lng, cust_lat, cust_lng)
         
         # Get driver current location
         driver_lng = None
@@ -161,10 +209,14 @@ def get_tracking(order_id):
                 driver_lng = float(loc_result[0]) if loc_result[0] is not None else None
                 driver_lat = float(loc_result[1]) if loc_result[1] is not None else None
                 
-        # If driver location is not set yet but the order is assigned/picked_up, driver is at the pharmacy
+        # If driver location is not set yet but the order is assigned/picked_up, position driver
         if driver_lat is None or driver_lng is None:
-            driver_lat = pharm_lat
-            driver_lng = pharm_lng
+            if is_simulated:
+                driver_lat = route_points[3][0]
+                driver_lng = route_points[3][1]
+            else:
+                driver_lat = pharm_lat
+                driver_lng = pharm_lng
             
         return jsonify({
             'success': True,
@@ -179,8 +231,9 @@ def get_tracking(order_id):
                 'pharmacy_name': pharm_name,
                 'pharmacy_lat': pharm_lat,
                 'pharmacy_lng': pharm_lng,
-                'customer_lat': float(order.customer_lat) if order.customer_lat is not None else 30.0444,
-                'customer_lng': float(order.customer_lng) if order.customer_lng is not None else 31.2357
+                'customer_lat': cust_lat,
+                'customer_lng': cust_lng,
+                'route_points': route_points
             }
         }), 200
     except Exception as e:
@@ -247,6 +300,25 @@ def simulation_worker(app_context, order_id):
             customer_lat = float(order.customer_lat) if (order and order.customer_lat is not None) else 30.0444
             customer_lng = float(order.customer_lng) if (order and order.customer_lng is not None) else 31.2357
             
+            # Check if driver is simulated driver
+            is_simulated = False
+            if order and order.delivery_person_id:
+                driver = User.query.get(order.delivery_person_id)
+                if driver and driver.email == 'driver_sim@mediscan.com':
+                    is_simulated = True
+                    pharm_lat = customer_lat + 0.02
+                    pharm_lng = customer_lng + 0.02
+                    
+            if is_simulated:
+                route_points = generate_delivery_route_11_points(pharm_lat, pharm_lng, customer_lat, customer_lng)
+            else:
+                route_points = []
+                for i in range(11):
+                    frac = i / 10.0
+                    lat = pharm_lat + (customer_lat - pharm_lat) * frac
+                    lng = pharm_lng + (customer_lng - pharm_lng) * frac
+                    route_points.append([lat, lng])
+                
             # Step 2: Wait and set in_transit, initial location (at pharmacy)
             time.sleep(3)
             order = DeliveryOrder.query.get(order_id)
@@ -268,17 +340,15 @@ def simulation_worker(app_context, order_id):
             # Step 3: Move over 10 ticks FROM pharmacy TO customer location (route Pharmacy ➜ Customer)
             for i in range(1, 11):
                 time.sleep(2)
-                # Linear interpolation
-                fraction = i / 10.0
-                curr_lat = pharm_lat + (customer_lat - pharm_lat) * fraction
-                curr_lng = pharm_lng + (customer_lng - pharm_lng) * fraction
+                curr_lat = route_points[i][0]
+                curr_lng = route_points[i][1]
                 
                 db.session.execute(
                     text("UPDATE delivery_orders SET tracking_location = POINT(:lng, :lat) WHERE order_id = :order_id"),
                     {'lng': curr_lng, 'lat': curr_lat, 'order_id': order_id}
                 )
                 db.session.commit()
-
+                
             # Step 4: Delivered
             time.sleep(2)
             order = DeliveryOrder.query.get(order_id)
@@ -291,11 +361,11 @@ def simulation_worker(app_context, order_id):
                     message="Your order has been successfully delivered!"
                 )
                 db.session.add(notif)
-                
-
-                        
                 db.session.commit()
         except Exception as e:
+            import traceback
+            print("SIMULATION EXCEPTION:", str(e))
+            traceback.print_exc()
             db.session.rollback()
 
 @orders_bp.route('/<string:order_id>/simulate', methods=['POST'])
@@ -316,7 +386,7 @@ def simulate_delivery(order_id):
             
         driver = User.query.filter_by(email='driver_sim@mediscan.com').first()
         import random
-        driver_names = ['Ahmed Ali', 'Mohamed Hassan', 'Omar Khaled', 'Mostafa Ibrahim', 'Youssef Mahmoud']
+        driver_names = ['Ahmed Ali', 'Mohamed Hassan', 'Omar Khaled', 'Mostafa Ibrahim', 'Youssef Mahmoud', 'Mohamed Ahmed']
         if not driver:
             driver = User(
                 email='driver_sim@mediscan.com',
@@ -329,19 +399,28 @@ def simulate_delivery(order_id):
             db.session.add(driver)
             db.session.commit()
         else:
-            if driver.full_name == 'Speedy Delivery (Sim)':
+            if driver.full_name == 'Speedy Delivery (Sim)' or 'sim' in driver.full_name.lower():
                 driver.full_name = random.choice(driver_names)
                 db.session.commit()
             
         order.delivery_person_id = driver.user_id
         order.status = 'assigned'
         
-        # Reset tracking location to Pharmacy coordinates
+        # Reset tracking location to Pharmacy coordinates (offset if simulated)
         pharmacy = Pharmacy.query.get(order.pharmacy_id)
         if pharmacy and pharmacy.latitude and pharmacy.longitude:
+            p_lat = float(pharmacy.latitude)
+            p_lng = float(pharmacy.longitude)
+            
+            if driver and driver.email == 'driver_sim@mediscan.com':
+                cust_lat = float(order.customer_lat) if order.customer_lat is not None else 30.0444
+                cust_lng = float(order.customer_lng) if order.customer_lng is not None else 31.2357
+                p_lat = cust_lat + 0.02
+                p_lng = cust_lng + 0.02
+                
             db.session.execute(
                 text("UPDATE delivery_orders SET tracking_location = POINT(:lng, :lat) WHERE order_id = :order_id"),
-                {'lng': float(pharmacy.longitude), 'lat': float(pharmacy.latitude), 'order_id': order_id}
+                {'lng': p_lng, 'lat': p_lat, 'order_id': order_id}
             )
         db.session.commit()
         

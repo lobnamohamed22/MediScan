@@ -80,8 +80,10 @@ class CartService {
         return jsonDecode(response.body);
       }
       return {'success': false, 'message': 'Failed to bulk add to cart'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+    } catch (e, stackTrace) {
+      print('[CartService] Error in bulkAddByNames: $e');
+      print(stackTrace);
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 

@@ -27,21 +27,33 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
       _errorMessage = '';
     });
 
-    final result = await ApiService.getOrders();
+    try {
+      final result = await ApiService.getOrders();
+      debugPrint('[OrderHistoryScreen] ApiService.getOrders result: $result');
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (result['success'] == true) {
-      final List<dynamic> data = result['data'] ?? [];
-      setState(() {
-        _orders = data.map((json) => OrderItem.fromJson(json)).toList();
-        _isLoading = false;
-      });
-    } else {
-      setState(() {
-        _errorMessage = result['message'] ?? 'Failed to load orders';
-        _isLoading = false;
-      });
+      if (result['success'] == true) {
+        final List<dynamic> data = result['data'] ?? [];
+        setState(() {
+          _orders = data.map((json) => OrderItem.fromJson(json)).toList();
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage = result['message'] ?? 'Failed to load orders';
+          _isLoading = false;
+        });
+      }
+    } catch (e, stackTrace) {
+      debugPrint('[OrderHistoryScreen] Error loading orders: $e');
+      debugPrint('[OrderHistoryScreen] Stack trace: $stackTrace');
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Unexpected error: $e';
+          _isLoading = false;
+        });
+      }
     }
   }
 

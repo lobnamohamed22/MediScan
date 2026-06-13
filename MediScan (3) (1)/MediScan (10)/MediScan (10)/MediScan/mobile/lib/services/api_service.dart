@@ -13,6 +13,7 @@ class ApiService {
     final token = await AuthService().getToken();
     return {
       'Content-Type': 'application/json',
+      'Connection': 'close',
       if (token != null) 'Authorization': 'Bearer $token',
     };
   }
@@ -148,24 +149,35 @@ class ApiService {
 // ================= MEDICINES =================
   static Future<Map<String, dynamic>> searchMedicines(String query) async {
     try {
+      debugPrint('[API] Requesting GET /medicines/search?q=$query...');
       await _validateAuthentication();
 
       final response = await _timedGet('$baseUrl/medicines/search?q=$query');
+      debugPrint('[API] GET /medicines/search?q=$query returned status code: ${response.statusCode}');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
-      if (handled.isNotEmpty) return handled;
+      if (handled.isNotEmpty) {
+        debugPrint('[API] GET /medicines/search?q=$query was handled by session validator');
+        return handled;
+      }
 
       if (response.statusCode == 200) {
         try {
-          return jsonDecode(response.body);
+          final decoded = jsonDecode(response.body);
+          debugPrint('[API] GET /medicines/search?q=$query successfully parsed: ${decoded['data']?.length ?? 0} items');
+          return decoded;
         } catch (e) {
-          return {'success': false, 'message': 'Invalid server response'};
+          debugPrint('[API] GET /medicines/search?q=$query failed to parse JSON: $e');
+          return {'success': false, 'message': 'Invalid server response: $e'};
         }
       }
 
-      return {'success': false, 'message': 'Failed to search medicines'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      debugPrint('[API] GET /medicines/search HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {'success': false, 'message': 'Failed to search medicines: HTTP ${response.statusCode}'};
+    } catch (e, stackTrace) {
+      debugPrint('[API] Exception in searchMedicines: $e');
+      debugPrint('[API] Stack trace: $stackTrace');
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -648,43 +660,69 @@ class ApiService {
   // ================= ORDERS =================
   static Future<Map<String, dynamic>> getOrders() async {
     try {
+      debugPrint('[API] Requesting GET /orders...');
       await _validateAuthentication();
+      final stopwatch = Stopwatch()..start();
       final response = await _timedGet('$baseUrl/orders');
+      stopwatch.stop();
+      debugPrint('[API] GET /orders returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
-      if (handled.isNotEmpty) return handled;
+      if (handled.isNotEmpty) {
+        debugPrint('[API] GET /orders was handled by session validator');
+        return handled;
+      }
 
       if (response.statusCode == 200) {
         try {
-          return jsonDecode(response.body);
+          final decoded = jsonDecode(response.body);
+          debugPrint('[API] GET /orders successfully parsed: ${decoded['data']?.length ?? 0} items');
+          return decoded;
         } catch (e) {
-          return {'success': false, 'message': 'Failed to parse orders'};
+          debugPrint('[API] GET /orders failed to parse JSON: $e');
+          return {'success': false, 'message': 'Failed to parse orders: $e'};
         }
       }
-      return {'success': false, 'message': 'Failed to fetch orders'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      debugPrint('[API] GET /orders HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {'success': false, 'message': 'Failed to fetch orders: HTTP ${response.statusCode}'};
+    } catch (e, stackTrace) {
+      debugPrint('[API] Exception in getOrders: $e');
+      debugPrint('[API] Stack trace: $stackTrace');
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
   static Future<Map<String, dynamic>> getDeliveryAssignedOrders() async {
     try {
+      debugPrint('[API] Requesting GET /orders/delivery/assigned...');
       await _validateAuthentication();
+      final stopwatch = Stopwatch()..start();
       final response = await _timedGet('$baseUrl/orders/delivery/assigned');
+      stopwatch.stop();
+      debugPrint('[API] GET /orders/delivery/assigned returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
-      if (handled.isNotEmpty) return handled;
+      if (handled.isNotEmpty) {
+        debugPrint('[API] GET /orders/delivery/assigned was handled by session validator');
+        return handled;
+      }
 
       if (response.statusCode == 200) {
         try {
-          return jsonDecode(response.body);
+          final decoded = jsonDecode(response.body);
+          debugPrint('[API] GET /orders/delivery/assigned successfully parsed: ${decoded['data']?.length ?? 0} items');
+          return decoded;
         } catch (e) {
-          return {'success': false, 'message': 'Failed to parse orders'};
+          debugPrint('[API] GET /orders/delivery/assigned failed to parse JSON: $e');
+          return {'success': false, 'message': 'Failed to parse orders: $e'};
         }
       }
-      return {'success': false, 'message': 'Failed to fetch assigned orders'};
-    } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      debugPrint('[API] GET /orders/delivery/assigned HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {'success': false, 'message': 'Failed to fetch assigned orders: HTTP ${response.statusCode}'};
+    } catch (e, stackTrace) {
+      debugPrint('[API] Exception in getDeliveryAssignedOrders: $e');
+      debugPrint('[API] Stack trace: $stackTrace');
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 

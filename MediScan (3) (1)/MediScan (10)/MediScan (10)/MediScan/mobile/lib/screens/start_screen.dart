@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'dart:async';
 import 'login_screen.dart';
 import 'signup_screen.dart';
 
@@ -11,18 +12,31 @@ class StartScreen extends StatefulWidget {
 }
 
 class _StartScreenState extends State<StartScreen> {
+  Timer? _redirectTimer;
+
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _startRedirectTimer();
   }
 
-  void _navigateToLogin() {
-    Future.delayed(const Duration(seconds: 3), () {
+  void _startRedirectTimer() {
+    _redirectTimer = Timer(const Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacementNamed(context, '/login');
       }
     });
+  }
+
+  void _cancelRedirectTimer() {
+    _redirectTimer?.cancel();
+    _redirectTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _cancelRedirectTimer();
+    super.dispose();
   }
 
   @override
@@ -105,6 +119,7 @@ class _StartScreenState extends State<StartScreen> {
                         height: 56,
                         child: ElevatedButton(
                           onPressed: () {
+                            _cancelRedirectTimer();
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -131,6 +146,7 @@ class _StartScreenState extends State<StartScreen> {
                         height: 56,
                         child: OutlinedButton(
                           onPressed: () {
+                            _cancelRedirectTimer();
                             Navigator.push(
                               context,
                               MaterialPageRoute(

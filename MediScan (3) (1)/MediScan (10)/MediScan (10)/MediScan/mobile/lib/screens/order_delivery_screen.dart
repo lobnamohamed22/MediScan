@@ -29,6 +29,7 @@ class _OrderDeliveryScreenState extends State<OrderDeliveryScreen> {
 
     try {
       final result = await ApiService.getOrders();
+      debugPrint('[OrderDeliveryScreen] ApiService.getOrders result: $result');
       if (result['success'] == true) {
         setState(() {
           _orders = result['data'] ?? [];
@@ -38,9 +39,11 @@ class _OrderDeliveryScreenState extends State<OrderDeliveryScreen> {
           _errorMessage = result['message'] ?? 'Failed to load orders.';
         });
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
+      debugPrint('[OrderDeliveryScreen] Error fetching orders: $e');
+      debugPrint('[OrderDeliveryScreen] Stack trace: $stackTrace');
       setState(() {
-        _errorMessage = 'Network error occurred.';
+        _errorMessage = 'Unexpected error: $e';
       });
     } finally {
       setState(() {

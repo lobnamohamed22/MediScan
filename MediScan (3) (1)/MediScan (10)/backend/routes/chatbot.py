@@ -56,11 +56,13 @@ def send_message():
         # List of models to try. We prioritize gemini-1.5-flash since it has the highest free tier quota (1,500 RPD).
         # We fall back to other models if it is rate-limited or unavailable.
         models_to_try = [
-            "gemini-1.5-flash",
             "gemini-2.5-flash",
             "gemini-2.0-flash",
+            "gemini-2.5-flash-lite",
+            "gemini-2.0-flash-lite",
             "gemini-flash-latest",
-            "gemini-1.5-pro"
+            "gemini-pro-latest",
+            "gemini-2.5-pro"
         ]
 
         reply = None

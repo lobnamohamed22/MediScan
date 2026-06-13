@@ -11,7 +11,15 @@ import 'order_details_screen.dart';
 
 class PharmacyMapScreen extends StatefulWidget {
   final String? medicineName;
-  const PharmacyMapScreen({super.key, this.medicineName});
+  final bool fromPrescription;
+  final List<String>? prescriptionMedicines;
+
+  const PharmacyMapScreen({
+    super.key,
+    this.medicineName,
+    this.fromPrescription = false,
+    this.prescriptionMedicines,
+  });
 
   @override
   State<PharmacyMapScreen> createState() => _PharmacyMapScreenState();
@@ -22,6 +30,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
   List<Pharmacy> _pharmacies = [];
   bool _isLoading = true;
   LatLng _currentLocation = const LatLng(29.8514, 31.3428); // Helwan University default
+  LatLng? _lastFetchedLocation;
 
   StreamSubscription<Position>? _positionStream;
 
@@ -47,11 +56,26 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
     _positionStream = Geolocator.getPositionStream(locationSettings: settings)
         .listen((Position position) {
       if (!mounted) return;
+      final newLoc = LatLng(position.latitude, position.longitude);
+      
+      double dist = 1000.0; // Default to trigger fetch if lastFetched is null
+      if (_lastFetchedLocation != null) {
+        dist = Geolocator.distanceBetween(
+          _lastFetchedLocation!.latitude,
+          _lastFetchedLocation!.longitude,
+          newLoc.latitude,
+          newLoc.longitude,
+        );
+      }
+
       setState(() {
-        _currentLocation = LatLng(position.latitude, position.longitude);
+        _currentLocation = newLoc;
       });
-      _mapController.move(_currentLocation, 14);
-      _fetchPharmacies();
+
+      // Only re-fetch if user moved more than 500 meters
+      if (dist > 500) {
+        _fetchPharmacies();
+      }
     }, onError: (err) {
       debugPrint("Location stream error on map: $err");
     });
@@ -73,16 +97,44 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
           permission == LocationPermission.always) {
         _startListeningLocation();
 
+        // 1. Get last known location first (instant)
+        final lastKnown = await Geolocator.getLastKnownPosition();
+        bool hasLastKnown = false;
+        if (lastKnown != null) {
+          hasLastKnown = true;
+          if (mounted) {
+            setState(() {
+              _currentLocation = LatLng(lastKnown.latitude, lastKnown.longitude);
+            });
+            _mapController.move(_currentLocation, 14);
+            _fetchPharmacies();
+          }
+        } else {
+          // Fetch default pharmacies immediately so the screen is not blank/empty
+          _fetchPharmacies();
+        }
+
+        // 2. Fetch high-accuracy position in background
         final pos = await Geolocator.getCurrentPosition(
           desiredAccuracy: LocationAccuracy.high,
-          timeLimit: const Duration(seconds: 6),
+          timeLimit: const Duration(seconds: 4),
         );
         if (!mounted) return;
-        setState(() {
-          _currentLocation = LatLng(pos.latitude, pos.longitude);
-        });
-        _mapController.move(_currentLocation, 14);
-        _fetchPharmacies();
+
+        final double dist = Geolocator.distanceBetween(
+          _currentLocation.latitude,
+          _currentLocation.longitude,
+          pos.latitude,
+          pos.longitude,
+        );
+
+        if (!hasLastKnown || dist > 150) {
+          setState(() {
+            _currentLocation = LatLng(pos.latitude, pos.longitude);
+          });
+          _mapController.move(_currentLocation, 14);
+          _fetchPharmacies();
+        }
       } else {
         if (!mounted) return;
         setState(() {
@@ -94,17 +146,20 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
     } catch (e) {
       debugPrint("Location error: $e");
       if (!mounted) return;
-      setState(() {
-        _currentLocation = const LatLng(29.8514, 31.3428);
-      });
-      _mapController.move(_currentLocation, 14);
-      _fetchPharmacies();
+      if (_pharmacies.isEmpty) {
+        setState(() {
+          _currentLocation = const LatLng(29.8514, 31.3428);
+        });
+        _mapController.move(_currentLocation, 14);
+        _fetchPharmacies();
+      }
     }
   }
 
   Future<void> _fetchPharmacies() async {
     if (!mounted) return;
     setState(() => _isLoading = true);
+    _lastFetchedLocation = _currentLocation;
     try {
       final res = await ApiService.getNearbyPharmacies(
         _currentLocation.latitude,
@@ -292,12 +347,14 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
                       context,
                       MaterialPageRoute(
                         builder: (_) => OrderDetailsScreen(
-                          orderId: 'RES-${p.id}',
+                          orderId: widget.fromPrescription ? 'PREVIEW' : 'RES-${p.id}',
                           pharmacy: p.name,
                           pharmacyId: p.id,
                           date: DateTime.now().toString().split(' ')[0],
-                          status: 'pending',
-                          medicines: p.availableMedicines,
+                          status: widget.fromPrescription ? 'preview' : 'pending',
+                          medicines: widget.fromPrescription
+                              ? (widget.prescriptionMedicines ?? [])
+                              : p.availableMedicines,
                           total: p.price ?? 0.0,
                         ),
                       ),
@@ -327,7 +384,7 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _currentLocation,
-              initialZoom: 12.0,
+              initialZoom: 14.0,
               minZoom: 2.0,
               maxZoom: 18.0,
             ),
@@ -336,6 +393,8 @@ class _PharmacyMapScreenState extends State<PharmacyMapScreen> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.example.mediscan',
                 tileProvider: CancellableNetworkTileProvider(),
+                panBuffer: 2,
+                keepBuffer: 3,
               ),
               MarkerLayer(
                 markers: [

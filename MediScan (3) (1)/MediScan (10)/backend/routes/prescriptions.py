@@ -15,8 +15,61 @@ import re
 import difflib
 from models.medicine import MedicineInfo, MedicineInventory
 
+def calculate_levenshtein_distance(s1, s2):
+    if s1 == s2:
+        return 0
+    if not s1:
+        return len(s2)
+    if not s2:
+        return len(s1)
+    v0 = [i for i in range(len(s2) + 1)]
+    v1 = [0] * (len(s2) + 1)
+    for i in range(len(s1)):
+        v1[0] = i + 1
+        for j in range(len(s2)):
+            cost = 0 if s1[i] == s2[j] else 1
+            v1[j + 1] = min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost)
+        v0 = list(v1)
+    return v0[len(s2)]
+
+def calculate_similarity(s1, s2):
+    s1 = s1.lower().strip()
+    s2 = s2.lower().strip()
+    if s1 == s2:
+        return 1.0
+    if not s1 or not s2:
+        return 0.0
+    
+    suffixes_pat = r'\b(?:\d+\.?\d*\s*)?(mg|g|ml|cream|gel|injection|inhaler|tablets|tablet|capsules|capsule)\b'
+    clean1 = re.sub(suffixes_pat, '', s1).strip()
+    clean2 = re.sub(suffixes_pat, '', s2).strip()
+    clean1 = re.sub(r'\s+', ' ', clean1).strip()
+    clean2 = re.sub(r'\s+', ' ', clean2).strip()
+    
+    if clean1 == clean2:
+        return 1.0
+    if not clean1 or not clean2:
+        return 0.0
+        
+    if clean1 in clean2 or clean2 in clean1:
+        common_len = min(len(clean1), len(clean2))
+        max_len = max(len(clean1), len(clean2))
+        return common_len / max_len
+        
+    distance = calculate_levenshtein_distance(clean1, clean2)
+    max_length = max(len(clean1), len(clean2))
+    score = 1.0 - (distance / max_length)
+    
+    m1 = re.search(r'\d+', s1)
+    m2 = re.search(r'\d+', s2)
+    if m1 and m2 and m1.group(0) == m2.group(0) and score >= 0.70:
+        score += 0.15
+        if score > 1.0:
+            score = 1.0
+    return score
+
 # Highly robust fuzzy matching with tie-breaker
-def find_best_inventory_match(name, candidates_info, cutoff=0.85):
+def find_best_inventory_match(name, candidates_info, cutoff=0.70):
     if not candidates_info:
         return None
     name_lower = name.lower().strip()
@@ -32,35 +85,12 @@ def find_best_inventory_match(name, candidates_info, cutoff=0.85):
         if name_lower in c_lower or c_lower in name_lower:
             return c_name
             
-    # 3. Clean suffix matches
-    suffixes_pat = r'\b(mg|g|ml|cream|gel|injection|inhaler|tablets|tablet|capsules|capsule)\b'
-    clean_name = re.sub(suffixes_pat, '', name_lower).strip()
-    clean_name = re.sub(r'\s+', ' ', clean_name).strip()
-    
-    for c_name, c_stock, c_price in candidates_info:
-        c_lower = c_name.lower().strip()
-        c_clean = re.sub(suffixes_pat, '', c_lower).strip()
-        c_clean = re.sub(r'\s+', ' ', c_clean).strip()
-        if clean_name and c_clean:
-            if clean_name in c_clean or c_clean in clean_name:
-                return c_name
-    
-    # 4. SequenceMatcher fuzzy match with tie-breaker & performance pre-filtering
-    first_char = name_lower[0] if name_lower else ''
-    filtered_info = []
-    for c_name, c_stock, c_price in candidates_info:
-        c_lower = c_name.lower().strip()
-        # Pre-filter for performance: same first character OR similar length within 4 chars
-        if c_lower.startswith(first_char) or abs(len(c_lower) - len(name_lower)) <= 4:
-            filtered_info.append((c_name, c_stock, c_price))
-            
     best_match = None
     best_ratio = 0.0
     best_has_stock = False
     
-    for c_name, c_stock, c_price in filtered_info:
-        c_lower = c_name.lower().strip()
-        ratio = difflib.SequenceMatcher(None, name_lower, c_lower).ratio()
+    for c_name, c_stock, c_price in candidates_info:
+        ratio = calculate_similarity(name, c_name)
         if ratio < cutoff:
             continue
             
@@ -85,7 +115,7 @@ def find_best_inventory_match(name, candidates_info, cutoff=0.85):
             
     return best_match
 
-def find_best_catalog_match(name, candidates, cutoff=0.85):
+def find_best_catalog_match(name, candidates, cutoff=0.70):
     if not candidates:
         return None
     name_lower = name.lower().strip()
@@ -101,35 +131,14 @@ def find_best_catalog_match(name, candidates, cutoff=0.85):
         if name_lower in c_lower or c_lower in name_lower:
             return c
             
-    # 3. Clean suffix matches
-    suffixes_pat = r'\b(mg|g|ml|cream|gel|injection|inhaler|tablets|tablet|capsules|capsule)\b'
-    clean_name = re.sub(suffixes_pat, '', name_lower).strip()
-    clean_name = re.sub(r'\s+', ' ', clean_name).strip()
-    
-    for c in candidates:
-        c_lower = c.lower().strip()
-        c_clean = re.sub(suffixes_pat, '', c_lower).strip()
-        c_clean = re.sub(r'\s+', ' ', c_clean).strip()
-        if clean_name and c_clean:
-            if clean_name in c_clean or c_clean in clean_name:
-                return c
-    
-    # 4. SequenceMatcher fuzzy match with performance pre-filtering
-    first_char = name_lower[0] if name_lower else ''
-    filtered = []
-    for c in candidates:
-        c_lower = c.lower().strip()
-        if c_lower.startswith(first_char) or abs(len(c_lower) - len(name_lower)) <= 4:
-            filtered.append(c)
-            
     best_match = None
     best_ratio = 0.0
-    for c in filtered:
-        c_lower = c.lower().strip()
-        ratio = difflib.SequenceMatcher(None, name_lower, c_lower).ratio()
+    for c in candidates:
+        ratio = calculate_similarity(name, c)
         if ratio > best_ratio:
             best_ratio = ratio
             best_match = c
+            
     if best_ratio >= cutoff:
         return best_match
     return None
