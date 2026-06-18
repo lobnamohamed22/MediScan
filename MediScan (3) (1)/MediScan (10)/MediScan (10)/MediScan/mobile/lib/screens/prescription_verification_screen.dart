@@ -16,13 +16,15 @@ class PrescriptionVerificationScreen extends StatefulWidget {
 class _PrescriptionVerificationScreenState
     extends State<PrescriptionVerificationScreen> {
   late List<Map<String, dynamic>> _medicinesData;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
     super.initState();
-    _medicinesData = widget.initialMedicines.map((m) {
+    _medicinesData = widget.initialMedicines.map<Map<String, dynamic>>((m) {
       final name = m['name']?.toString() ?? '';
-      return {
+      return <String, dynamic>{
+        'id': UniqueKey(),
         'name': name,
         'controller': TextEditingController(text: name),
       };
@@ -35,23 +37,28 @@ class _PrescriptionVerificationScreenState
       final ctrl = m['controller'] as TextEditingController;
       ctrl.dispose();
     }
+    _scrollController.dispose();
     super.dispose();
   }
 
   void _addMedicine() {
-    print("[DEBUG] _addMedicine called. Old length: ${_medicinesData.length}");
-    try {
-      setState(() {
-        _medicinesData.add({
-          'name': '',
-          'controller': TextEditingController(),
-        });
+    setState(() {
+      _medicinesData.add(<String, dynamic>{
+        'id': UniqueKey(),
+        'name': '',
+        'controller': TextEditingController(),
       });
-      print("[DEBUG] _addMedicine done. New length: ${_medicinesData.length}");
-    } catch (e, stack) {
-      print("[DEBUG] _addMedicine error: $e");
-      print(stack);
-    }
+    });
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   void _removeMedicine(int index) {
@@ -83,9 +90,7 @@ class _PrescriptionVerificationScreenState
 
   @override
   Widget build(BuildContext context) {
-    print("[DEBUG] build called. Medicines count: ${_medicinesData.length}");
     return Scaffold(
-
       appBar: AppBar(
         title: const Text('Verify Prescription'),
         centerTitle: true,
@@ -103,12 +108,14 @@ class _PrescriptionVerificationScreenState
           const SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
+              controller: _scrollController,
               itemCount: _medicinesData.length,
               itemBuilder: (context, index) {
                 final item = _medicinesData[index];
                 final controller = item['controller'] as TextEditingController;
 
                 return Padding(
+                  key: ValueKey(item['id']),
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(

@@ -55,11 +55,15 @@ class _PrescriptionHistoryScreenState extends State<PrescriptionHistoryScreen> {
     List<Prescription> filteredPrescriptions = _allPrescriptions;
 
     if (_selectedFilter != 'All') {
-      filteredPrescriptions = _allPrescriptions
-          .where(
-            (p) => p.status.toLowerCase() == _selectedFilter.toLowerCase(),
-          )
-          .toList();
+      filteredPrescriptions = _allPrescriptions.where((p) {
+        final status = p.status.toLowerCase();
+        if (_selectedFilter == 'pending') {
+          return status == 'pending' || status == 'uploaded' || status.contains('pending');
+        } else if (_selectedFilter == 'verified') {
+          return status == 'verified' || status == 'processed' || status == 'reserved' || status == 'filled' || status == 'delivered';
+        }
+        return status == _selectedFilter.toLowerCase();
+      }).toList();
     }
 
     return Scaffold(
@@ -194,7 +198,7 @@ class PrescriptionHistoryCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: prescription.status.toLowerCase() == 'verified'
+                    color: ['verified', 'processed', 'reserved', 'filled', 'delivered'].contains(prescription.status.toLowerCase())
                         ? Colors.green.withValues(alpha: 0.1)
                         : Colors.orange.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
@@ -202,7 +206,7 @@ class PrescriptionHistoryCard extends StatelessWidget {
                   child: Text(
                     prescription.status.toUpperCase(),
                     style: TextStyle(
-                      color: prescription.status.toLowerCase() == 'verified'
+                      color: ['verified', 'processed', 'reserved', 'filled', 'delivered'].contains(prescription.status.toLowerCase())
                           ? Colors.green
                           : Colors.orange,
                       fontSize: 12,

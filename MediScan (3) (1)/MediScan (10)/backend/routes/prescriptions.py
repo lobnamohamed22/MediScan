@@ -691,7 +691,8 @@ def verify_prescription(id):
                     if not existing:
                         new_med = MedicineInfo(
                             medicine_name=raw_name,
-                            generic_name='OCR Extracted'
+                            generic_name='OCR Extracted',
+                            status='Pending Verification'
                         )
                         db.session.add(new_med)
                         db.session.commit()
@@ -699,6 +700,29 @@ def verify_prescription(id):
                 except Exception as db_err:
                     db.session.rollback()
                     print(f"Error auto-saving OCR medicine: {db_err}")
+                
+                # Auto-create inventory record if not exists
+                try:
+                    existing_inv = MedicineInventory.query.filter(MedicineInventory.medicine_name.ilike(raw_name)).first()
+                    if not existing_inv:
+                        from models.pharmacy import Pharmacy as PharmacyModel
+                        pharm = PharmacyModel.query.first()
+                        default_pharm_id = pharm.pharmacy_id if pharm else '1'
+                        
+                        new_inv = MedicineInventory(
+                            pharmacy_id=default_pharm_id,
+                            medicine_name=raw_name,
+                            generic_name='OCR Extracted',
+                            expiry_date=datetime.date.today() + datetime.timedelta(days=365),
+                            stock_quantity=0,
+                            price=0.0,
+                            is_prescription_required=True
+                        )
+                        db.session.add(new_inv)
+                        db.session.commit()
+                except Exception as db_err:
+                    db.session.rollback()
+                    print(f"Error auto-saving OCR inventory: {db_err}")
                     
             new_med = PrescriptionMedicine(
                 id=str(uuid.uuid4()),

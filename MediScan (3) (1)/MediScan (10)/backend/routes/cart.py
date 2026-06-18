@@ -24,11 +24,15 @@ def get_cart():
             query = text("""
                 SELECT ci.cart_item_id, ci.quantity, ci.medicine_id,
                        m.medicine_name, m.generic_name, m.medicine_image AS image_url,
-                       COALESCE(i.stock_quantity, 0) AS total_stock,
-                       COALESCE(i.price, 0) AS avg_price
+                       COALESCE(i.total_stock, 0) AS total_stock,
+                       COALESCE(NULLIF(i.avg_price, 0), (SELECT AVG(NULLIF(pi.price, 0)) FROM medicine_inventory pi WHERE pi.medicine_name = m.medicine_name), 30.0) AS avg_price
                 FROM cart_items ci
                 JOIN medicine_info m ON ci.medicine_id = m.id
-                LEFT JOIN medicine_inventory i ON m.medicine_name = i.medicine_name AND i.pharmacy_id = :pharmacy_id
+                LEFT JOIN (
+                    SELECT medicine_name, pharmacy_id, SUM(stock_quantity) as total_stock, AVG(NULLIF(price, 0)) as avg_price
+                    FROM medicine_inventory
+                    GROUP BY medicine_name, pharmacy_id
+                ) i ON m.medicine_name = i.medicine_name AND i.pharmacy_id = :pharmacy_id
                 WHERE ci.cart_id = :cart_id
             """)
             params = {'cart_id': cart.cart_id, 'pharmacy_id': cart.pharmacy_id}
@@ -37,7 +41,7 @@ def get_cart():
                 SELECT ci.cart_item_id, ci.quantity, ci.medicine_id,
                        m.medicine_name, m.generic_name, m.medicine_image AS image_url,
                        COALESCE(SUM(i.stock_quantity), 0) AS total_stock,
-                       COALESCE(AVG(i.price), 0) AS avg_price
+                       COALESCE(AVG(NULLIF(i.price, 0)), 30.0) AS avg_price
                 FROM cart_items ci
                 JOIN medicine_info m ON ci.medicine_id = m.id
                 LEFT JOIN medicine_inventory i ON m.medicine_name = i.medicine_name
@@ -178,7 +182,7 @@ def checkout():
         if cart.pharmacy_id:
             query = text("""
                 SELECT SUM(ci.quantity) AS total_qty,
-                       SUM(ci.quantity * COALESCE((SELECT i.price FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id AND i.pharmacy_id = :pharmacy_id), 0)) AS total_price
+                       SUM(ci.quantity * COALESCE(NULLIF((SELECT AVG(NULLIF(i.price, 0)) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id AND i.pharmacy_id = :pharmacy_id), 0), (SELECT AVG(NULLIF(pi.price, 0)) FROM medicine_inventory pi JOIN medicine_info m3 ON pi.medicine_name = m3.medicine_name WHERE m3.id = ci.medicine_id), 30.0)) AS total_price
                 FROM cart_items ci
                 WHERE ci.cart_id = :cart_id
             """)
@@ -186,7 +190,7 @@ def checkout():
         else:
             query = text("""
                 SELECT SUM(ci.quantity) AS total_qty,
-                       SUM(ci.quantity * COALESCE((SELECT AVG(i.price) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id), 0)) AS total_price
+                       SUM(ci.quantity * COALESCE(NULLIF((SELECT AVG(NULLIF(i.price, 0)) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id), 0), 30.0)) AS total_price
                 FROM cart_items ci
                 WHERE ci.cart_id = :cart_id
             """)
@@ -217,7 +221,7 @@ def checkout():
                 med_names = [r[0] for r in db.session.query(MedicineInfo.medicine_name).filter(MedicineInfo.id.in_(med_ids)).all()]
                 if med_names:
                     stock_pharms = db.session.query(MedicineInventory.pharmacy_id).\
-                        filter(MedicineInventory.medicine_name.in_(med_names), MedicineInventory.stock_quantity > 0).\
+                        filter(MedicineInventory.medicine_name.in_(med_names), MedicineInventory.stock_quantity > 0, MedicineInventory.price > 0).\
                         group_by(MedicineInventory.pharmacy_id).\
                         all()
                     if stock_pharms:
@@ -287,7 +291,7 @@ def checkout_preview():
         if cart.pharmacy_id:
             query = text("""
                 SELECT SUM(ci.quantity) AS total_qty,
-                       SUM(ci.quantity * COALESCE((SELECT i.price FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id AND i.pharmacy_id = :pharmacy_id), 0)) AS total_price
+                       SUM(ci.quantity * COALESCE(NULLIF((SELECT AVG(NULLIF(i.price, 0)) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id AND i.pharmacy_id = :pharmacy_id), 0), (SELECT AVG(NULLIF(pi.price, 0)) FROM medicine_inventory pi JOIN medicine_info m3 ON pi.medicine_name = m3.medicine_name WHERE m3.id = ci.medicine_id), 30.0)) AS total_price
                 FROM cart_items ci
                 WHERE ci.cart_id = :cart_id
             """)
@@ -295,7 +299,7 @@ def checkout_preview():
         else:
             query = text("""
                 SELECT SUM(ci.quantity) AS total_qty,
-                       SUM(ci.quantity * COALESCE((SELECT AVG(i.price) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id), 0)) AS total_price
+                       SUM(ci.quantity * COALESCE(NULLIF((SELECT AVG(NULLIF(i.price, 0)) FROM medicine_inventory i JOIN medicine_info m2 ON i.medicine_name = m2.medicine_name WHERE m2.id = ci.medicine_id), 0), 30.0)) AS total_price
                 FROM cart_items ci
                 WHERE ci.cart_id = :cart_id
             """)

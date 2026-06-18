@@ -153,27 +153,35 @@ class ApiService {
       await _validateAuthentication();
 
       final response = await _timedGet('$baseUrl/medicines/search?q=$query');
-      debugPrint('[API] GET /medicines/search?q=$query returned status code: ${response.statusCode}');
+      debugPrint(
+          '[API] GET /medicines/search?q=$query returned status code: ${response.statusCode}');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) {
-        debugPrint('[API] GET /medicines/search?q=$query was handled by session validator');
+        debugPrint(
+            '[API] GET /medicines/search?q=$query was handled by session validator');
         return handled;
       }
 
       if (response.statusCode == 200) {
         try {
           final decoded = jsonDecode(response.body);
-          debugPrint('[API] GET /medicines/search?q=$query successfully parsed: ${decoded['data']?.length ?? 0} items');
+          debugPrint(
+              '[API] GET /medicines/search?q=$query successfully parsed: ${decoded['data']?.length ?? 0} items');
           return decoded;
         } catch (e) {
-          debugPrint('[API] GET /medicines/search?q=$query failed to parse JSON: $e');
+          debugPrint(
+              '[API] GET /medicines/search?q=$query failed to parse JSON: $e');
           return {'success': false, 'message': 'Invalid server response: $e'};
         }
       }
 
-      debugPrint('[API] GET /medicines/search HTTP error: status ${response.statusCode}, body: ${response.body}');
-      return {'success': false, 'message': 'Failed to search medicines: HTTP ${response.statusCode}'};
+      debugPrint(
+          '[API] GET /medicines/search HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {
+        'success': false,
+        'message': 'Failed to search medicines: HTTP ${response.statusCode}'
+      };
     } catch (e, stackTrace) {
       debugPrint('[API] Exception in searchMedicines: $e');
       debugPrint('[API] Stack trace: $stackTrace');
@@ -263,7 +271,8 @@ class ApiService {
   }
 
 // ================= UPLOAD PROFILE IMAGE =================
-  static Future<Map<String, dynamic>> uploadProfileImage(List<int> bytes, String filename) async {
+  static Future<Map<String, dynamic>> uploadProfileImage(
+      List<int> bytes, String filename) async {
     try {
       await _validateAuthentication();
       final token = await AuthService().getToken();
@@ -327,7 +336,8 @@ class ApiService {
   static Future<Map<String, dynamic>> getPharmacyInventory() async {
     try {
       await _validateAuthentication();
-      final response = await _timedGet('$baseUrl/pharmacies/my-pharmacy/inventory');
+      final response =
+          await _timedGet('$baseUrl/pharmacies/my-pharmacy/inventory');
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -340,10 +350,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> updateInventoryItem(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateInventoryItem(
+      Map<String, dynamic> data) async {
     try {
       await _validateAuthentication();
-      final response = await _timedPost('$baseUrl/pharmacies/my-pharmacy/inventory', data);
+      final response =
+          await _timedPost('$baseUrl/pharmacies/my-pharmacy/inventory', data);
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -356,10 +368,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> deleteInventoryItem(String inventoryId) async {
+  static Future<Map<String, dynamic>> deleteInventoryItem(
+      String inventoryId) async {
     try {
       await _validateAuthentication();
-      final response = await _timedDelete('$baseUrl/pharmacies/my-pharmacy/inventory/$inventoryId');
+      final response = await _timedDelete(
+          '$baseUrl/pharmacies/my-pharmacy/inventory/$inventoryId');
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -389,7 +403,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> addFamilyMember(Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> addFamilyMember(
+      Map<String, dynamic> data) async {
     try {
       await _validateAuthentication();
       final response = await _timedPost('$baseUrl/users/family', data);
@@ -405,7 +420,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> updateFamilyMember(String memberId, Map<String, dynamic> data) async {
+  static Future<Map<String, dynamic>> updateFamilyMember(
+      String memberId, Map<String, dynamic> data) async {
     try {
       await _validateAuthentication();
       final response = await _timedPut('$baseUrl/users/family/$memberId', data);
@@ -421,7 +437,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> deleteFamilyMember(String memberId) async {
+  static Future<Map<String, dynamic>> deleteFamilyMember(
+      String memberId) async {
     try {
       await _validateAuthentication();
       final response = await _timedDelete('$baseUrl/users/family/$memberId');
@@ -510,10 +527,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getPharmacyInventoryById(String pharmacyId) async {
+  static Future<Map<String, dynamic>> getPharmacyInventoryById(
+      String pharmacyId) async {
     try {
       await _validateAuthentication();
-      final response = await _timedGet('$baseUrl/pharmacies/$pharmacyId/inventory');
+      final response =
+          await _timedGet('$baseUrl/pharmacies/$pharmacyId/inventory');
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -530,7 +549,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> resolvePrices(List<String> names, {String? pharmacyId}) async {
+  static Future<Map<String, dynamic>> resolvePrices(List<String> names,
+      {String? pharmacyId}) async {
     try {
       await _validateAuthentication();
       final response = await _timedPost('$baseUrl/medicines/resolve_prices', {
@@ -665,7 +685,8 @@ class ApiService {
       final stopwatch = Stopwatch()..start();
       final response = await _timedGet('$baseUrl/orders');
       stopwatch.stop();
-      debugPrint('[API] GET /orders returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint(
+          '[API] GET /orders returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) {
@@ -676,15 +697,20 @@ class ApiService {
       if (response.statusCode == 200) {
         try {
           final decoded = jsonDecode(response.body);
-          debugPrint('[API] GET /orders successfully parsed: ${decoded['data']?.length ?? 0} items');
+          debugPrint(
+              '[API] GET /orders successfully parsed: ${decoded['data']?.length ?? 0} items');
           return decoded;
         } catch (e) {
           debugPrint('[API] GET /orders failed to parse JSON: $e');
           return {'success': false, 'message': 'Failed to parse orders: $e'};
         }
       }
-      debugPrint('[API] GET /orders HTTP error: status ${response.statusCode}, body: ${response.body}');
-      return {'success': false, 'message': 'Failed to fetch orders: HTTP ${response.statusCode}'};
+      debugPrint(
+          '[API] GET /orders HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {
+        'success': false,
+        'message': 'Failed to fetch orders: HTTP ${response.statusCode}'
+      };
     } catch (e, stackTrace) {
       debugPrint('[API] Exception in getOrders: $e');
       debugPrint('[API] Stack trace: $stackTrace');
@@ -699,26 +725,35 @@ class ApiService {
       final stopwatch = Stopwatch()..start();
       final response = await _timedGet('$baseUrl/orders/delivery/assigned');
       stopwatch.stop();
-      debugPrint('[API] GET /orders/delivery/assigned returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint(
+          '[API] GET /orders/delivery/assigned returned status code: ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms');
 
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) {
-        debugPrint('[API] GET /orders/delivery/assigned was handled by session validator');
+        debugPrint(
+            '[API] GET /orders/delivery/assigned was handled by session validator');
         return handled;
       }
 
       if (response.statusCode == 200) {
         try {
           final decoded = jsonDecode(response.body);
-          debugPrint('[API] GET /orders/delivery/assigned successfully parsed: ${decoded['data']?.length ?? 0} items');
+          debugPrint(
+              '[API] GET /orders/delivery/assigned successfully parsed: ${decoded['data']?.length ?? 0} items');
           return decoded;
         } catch (e) {
-          debugPrint('[API] GET /orders/delivery/assigned failed to parse JSON: $e');
+          debugPrint(
+              '[API] GET /orders/delivery/assigned failed to parse JSON: $e');
           return {'success': false, 'message': 'Failed to parse orders: $e'};
         }
       }
-      debugPrint('[API] GET /orders/delivery/assigned HTTP error: status ${response.statusCode}, body: ${response.body}');
-      return {'success': false, 'message': 'Failed to fetch assigned orders: HTTP ${response.statusCode}'};
+      debugPrint(
+          '[API] GET /orders/delivery/assigned HTTP error: status ${response.statusCode}, body: ${response.body}');
+      return {
+        'success': false,
+        'message':
+            'Failed to fetch assigned orders: HTTP ${response.statusCode}'
+      };
     } catch (e, stackTrace) {
       debugPrint('[API] Exception in getDeliveryAssignedOrders: $e');
       debugPrint('[API] Stack trace: $stackTrace');
@@ -726,7 +761,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> updateOrderStatus(String orderId, String status) async {
+  static Future<Map<String, dynamic>> updateOrderStatus(
+      String orderId, String status) async {
     try {
       await _validateAuthentication();
       final response = await _timedPatch(
@@ -814,14 +850,14 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> simulateDelivery(String orderId, {double? customerLat, double? customerLng}) async {
+  static Future<Map<String, dynamic>> simulateDelivery(String orderId,
+      {double? customerLat, double? customerLng}) async {
     try {
       await _validateAuthentication();
-      final response =
-          await _timedPost('$baseUrl/orders/$orderId/simulate', {
-            if (customerLat != null) 'customer_lat': customerLat,
-            if (customerLng != null) 'customer_lng': customerLng,
-          });
+      final response = await _timedPost('$baseUrl/orders/$orderId/simulate', {
+        if (customerLat != null) 'customer_lat': customerLat,
+        if (customerLng != null) 'customer_lng': customerLng,
+      });
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
@@ -920,6 +956,26 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> bulkAddByNames(List<String> names,
+      {String? pharmacyId}) async {
+    try {
+      await _validateAuthentication();
+      final response = await _timedPost('$baseUrl/cart/bulk_add_by_name', {
+        'names': names,
+        if (pharmacyId != null) 'pharmacy_id': pharmacyId,
+      });
+      final handled = _handleResponseStatus(response.statusCode, response.body);
+      if (handled.isNotEmpty) return handled;
+
+      if (response.statusCode == 200) {
+        return jsonDecode(response.body);
+      }
+      return {'success': false, 'message': 'Failed to bulk add to cart'};
+    } catch (e) {
+      return {'success': false, 'message': 'Network error'};
+    }
+  }
+
   static Future<Map<String, dynamic>> updateCartItem(
       String cartItemId, int quantity) async {
     try {
@@ -954,7 +1010,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> checkoutCart({int redeemPoints = 0}) async {
+  static Future<Map<String, dynamic>> checkoutCart(
+      {int redeemPoints = 0}) async {
     try {
       await _validateAuthentication();
       final response = await _timedPost('$baseUrl/cart/checkout', {
@@ -963,12 +1020,21 @@ class ApiService {
       final handled = _handleResponseStatus(response.statusCode, response.body);
       if (handled.isNotEmpty) return handled;
 
-      if (response.statusCode == 201) {
+      if (response.statusCode == 201 || response.statusCode == 200) {
         return jsonDecode(response.body);
       }
-      return {'success': false, 'message': 'Failed to checkout cart'};
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded.containsKey('message')) {
+          return {'success': false, 'message': decoded['message']};
+        }
+      } catch (_) {}
+      return {
+        'success': false,
+        'message': 'Failed to checkout cart (${response.statusCode})'
+      };
     } catch (e) {
-      return {'success': false, 'message': 'Network error'};
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -1020,7 +1086,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> getCheckoutPreview(int redeemPoints) async {
+  static Future<Map<String, dynamic>> getCheckoutPreview(
+      int redeemPoints) async {
     try {
       await _validateAuthentication();
       final response = await _timedPost('$baseUrl/cart/checkout/preview', {
@@ -1088,4 +1155,3 @@ class ApiService {
     }
   }
 }
-

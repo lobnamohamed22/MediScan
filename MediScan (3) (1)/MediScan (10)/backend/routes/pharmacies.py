@@ -445,6 +445,7 @@ def get_nearby_pharmacies():
                   AND p.longitude BETWEEN 24.0 AND 37.0
                   AND mi.medicine_name LIKE :med
                   AND mi.stock_quantity > 0
+                  AND mi.price > 0
                   AND mi.expiry_date > CURDATE()
                 GROUP BY p.pharmacy_id
                 HAVING distance_km <= :radius

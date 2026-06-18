@@ -15,7 +15,7 @@ class _CartScreenState extends State<CartScreen> {
   String _errorMessage = '';
   List<dynamic> _cartItems = [];
   double _totalPrice = 0.0;
-  int _userPoints = 0;
+
 
   @override
   void initState() {
@@ -32,12 +32,7 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     try {
-      final results = await Future.wait([
-        ApiService.getCart(),
-        ApiService.getWallet(),
-      ]);
-      final res = results[0];
-      final walletRes = results[1];
+      final res = await ApiService.getCart();
 
       if (mounted) {
         if (res['success'] == true) {
@@ -45,9 +40,7 @@ class _CartScreenState extends State<CartScreen> {
             _cartItems = res['data']['items'] ?? [];
             _totalPrice =
                 double.tryParse(res['data']['total_price'].toString()) ?? 0.0;
-            if (walletRes['success'] == true) {
-              _userPoints = int.tryParse(walletRes['data']['reward_points'].toString()) ?? 0;
-            }
+
             _isLoading = false;
             _errorMessage = '';
           });
@@ -95,7 +88,8 @@ class _CartScreenState extends State<CartScreen> {
         }
       }
       _totalPrice = _cartItems.fold(0.0, (sum, item) {
-        final price = double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
+        final price =
+            double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
         final qty = int.tryParse(item['quantity'].toString()) ?? 1;
         return sum + (price * qty);
       });
@@ -134,7 +128,8 @@ class _CartScreenState extends State<CartScreen> {
     setState(() {
       _cartItems.removeWhere((item) => item['cart_item_id'] == cartItemId);
       _totalPrice = _cartItems.fold(0.0, (sum, item) {
-        final price = double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
+        final price =
+            double.tryParse(item['medicine']['price'].toString()) ?? 0.0;
         final qty = int.tryParse(item['quantity'].toString()) ?? 1;
         return sum + (price * qty);
       });
@@ -164,6 +159,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Future<void> _checkout() async {
+    if (_isLoading) return;
     setState(() => _isLoading = true);
 
     final res = await ApiService.checkoutCart();
@@ -253,7 +249,9 @@ class _CartScreenState extends State<CartScreen> {
 
         String imageUrl = medicine['image_url'] ?? '';
         if (imageUrl.contains('127.0.0.1') || imageUrl.contains('localhost')) {
-          imageUrl = imageUrl.replaceAll('127.0.0.1', '10.0.2.2').replaceAll('localhost', '10.0.2.2');
+          imageUrl = imageUrl
+              .replaceAll('127.0.0.1', '10.0.2.2')
+              .replaceAll('localhost', '10.0.2.2');
         } else if (imageUrl.startsWith('/')) {
           imageUrl = '${Config.baseUrl}$imageUrl';
         }
@@ -266,21 +264,6 @@ class _CartScreenState extends State<CartScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[200],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: imageUrl.isNotEmpty
-                      ? Image.network(imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(Icons.medication, color: Colors.grey))
-                      : const Icon(Icons.medication, color: Colors.grey),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -292,11 +275,19 @@ class _CartScreenState extends State<CartScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '${price.toStringAsFixed(2)} EGP',
+                        'Unit Price: ${price.toStringAsFixed(2)} EGP',
+                        style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Total: ${(price * quantity).toStringAsFixed(2)} EGP',
                         style: const TextStyle(
                             fontSize: 14,
                             color: Colors.green,
-                            fontWeight: FontWeight.w600),
+                            fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -363,16 +354,25 @@ class _CartScreenState extends State<CartScreen> {
                   ],
                 ),
                 ElevatedButton(
-                  onPressed: _checkout,
+                  onPressed: _isLoading ? null : _checkout,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 12),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: const Text('Checkout',
-                      style: TextStyle(fontSize: 16, color: Colors.white)),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Text('Checkout',
+                          style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
               ],
             ),
